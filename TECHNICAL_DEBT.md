@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## DR-NEW-02 / #1252 — the backup copies the database and the pending-audit queue as one snapshot (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1252; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent / data recovery. **Severity:** HIGH (issue; consent path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0079 §4 (a withdrawal always takes effect; the queue lock is taken before the database lock).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1252 only. `backup_database` (`titan/core/repositories/operations.py`) copies the database and reads the queue file under one shared queue lock (queue lock, then `DatabaseManager._lock`, as everywhere); a drain takes the lock exclusively, so it cannot move a withdrawal from the queue into the database between the two copies. After verification the queue copy is written in full under a temporary name, fsynced and renamed BEFORE the database copy gets its dated name; with no queue an older same-day copy is removed; a queue that cannot be copied fails the backup like a bad database copy (CRITICAL, counted, `.corrupt`) instead of leaving a backup without its queue; the database copy is owner-only. `scripts/backup.sh` takes the same shared lock with Python `fcntl` (no `flock` binary needed) around both copies, checks integrity after letting go, renames the queue copy before the database copy and cleans its partial files on any failure.
+Deliverable: the two changes, regression tests (a drain right after the database copy no longer loses the withdrawal on restore; a drain started during the copy waits; a queue that cannot be copied fails the backup; a backup without a queue removes an older copy and is owner-only; the shell backup waits for the queue lock before copying the database and its copy restores with the withdrawal), full canonical gates, independent review plus the extra security review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1252 closes after merge and green main. A rollback of token revocations (#1255) stays separate.
+Canonical doc update: this brief, the DR-NEW-01 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1252), category Α (tightening only, contract §13 not weakened: no failure path skips the queue copy that existed before). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions, including the extra security review for HIGH.
+Allowed / Forbidden: `titan/core/repositories/operations.py` (backup only), `scripts/backup.sh`, `tests/test_restore_backup.py`, the records above. No schema, queue format, drain, `daily_coach.py`, `titan/main.py`, `worker/__init__.py`, `telegram_bot.py`, AGENTS.md or ADR change.
+
+---
+
 ## DR-NEW-01 / #1251 — a restore brings back the pending-audit queue with the database (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1251; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent / data recovery. **Severity:** HIGH (issue; consent path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0079 (a withdrawal always takes effect, also after a restore) and AGENTS DR-03.
+**Status:** RESOLVED 2026-11-06 — PR #1492, squash `a89a5a1`; main green; issue #1251 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent / data recovery. **Severity:** HIGH (issue; consent path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0079 (a withdrawal always takes effect, also after a restore) and AGENTS DR-03.
 
 Pass type: implementation
 Change Type: implementation
