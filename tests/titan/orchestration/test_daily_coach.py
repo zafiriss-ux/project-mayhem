@@ -1691,9 +1691,9 @@ def test_hydrated_cs_tracker_stays_locked_with_two_trials():
     assert GovernanceEngine().check_cs_confidence_lock(coach.cs_tracker)["locked"] is True
 
 
-# ── #1349 / #1350: reproduction only (ING-NEW-03, ING-NEW-04) ────────────────
-# The trials are synthetic. The xfails fail for the bug and turn into plain
-# tests when it is fixed.
+# ── #1349 / #1350: repeated or incompatible trials (ING-NEW-03, ING-NEW-04) ──
+# The trials are synthetic. Reproduced in #1513; the guard in the CS hydration
+# step counts each distinct trial once and drops fits with CS or D' at or below 0.
 
 _PAIR_1349 = [(3000.0, 600.0), (5000.0, 1100.0)]
 _INCOMPATIBLE_1350 = [(3000.0 + 500 * i, 1200.0 - 50 * i) for i in range(6)]
@@ -1724,11 +1724,6 @@ def test_1349_control_two_distinct_trials_keep_the_cs_lock():
 
 
 @pytest.mark.unit
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="ING-NEW-03 (#1349): the same two trials entered three times lift the CS lock",
-)
 def test_1349_the_same_two_trials_entered_again_keep_the_cs_lock():
     tracker = _hydrated_cs_tracker(_PAIR_1349 * 3)
     assert _cs_lock(tracker)["locked"] is True
@@ -1745,25 +1740,85 @@ def test_1350_control_the_fit_of_these_trials_is_a_negative_speed():
 
 
 @pytest.mark.unit
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="ING-NEW-04 (#1350): a negative critical speed reaches the tracker",
-)
 def test_1350_a_negative_critical_speed_does_not_reach_the_tracker():
     tracker = _hydrated_cs_tracker(_INCOMPATIBLE_1350)
     assert tracker.cs_smoothed is None or tracker.cs_smoothed > 0
 
 
 @pytest.mark.unit
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="ING-NEW-04 (#1350): trials whose fit is a negative speed lift the CS lock",
-)
 def test_1350_trials_whose_fit_is_a_negative_speed_keep_the_cs_lock():
     tracker = _hydrated_cs_tracker(_INCOMPATIBLE_1350)
     assert _cs_lock(tracker)["locked"] is True
+
+
+@pytest.mark.unit
+def test_1349_two_distinct_trials_of_the_same_day_both_count():
+    """Only exact repeats collapse; distinct trials of one day stay distinct."""
+    trials = [(3000.0, 600.0), (5000.0, 1100.0), (10000.0, 2350.0)]
+    updates = []
+    from titan.science.critical_speed import CriticalSpeedTracker
+
+    tracker = CriticalSpeedTracker()
+    real_update = tracker.update
+    tracker.update = lambda *args: (updates.append(args), real_update(*args))
+    today = datetime.now(UTC).date().isoformat()
+    coach = _make_hydration_coach(_HydrationDB(cs=[(today, d, t) for d, t in reversed(trials * 2)]))
+    coach.cs_tracker = tracker
+    coach._hydrate_engines_from_db()
+    assert len(updates) == 2
+
+
+@pytest.mark.unit
+def test_1349_repeats_do_not_raise_the_confidence_above_the_distinct_trials():
+    assert _hydrated_cs_tracker(_PAIR_1349 * 3).confidence == _hydrated_cs_tracker(_PAIR_1349).confidence
+
+
+@pytest.mark.unit
+def test_1349_skipping_a_repeat_never_adds_an_update():
+    """The windows keep the repeat, so a fit the old code rejected stays rejected.
+
+    With the repeat of A in the window, the fit of [A, A, B, C] is exactly 0;
+    removing the repeat would give a valid fit and a second update (70%, unlocked).
+    """
+    from titan.science.critical_speed import CriticalSpeedTracker
+
+    today = datetime.now(UTC).date()
+    # day[0] is two days ago, day[2] today; the DB returns rows newest first.
+    day = [(today - timedelta(days=n)).isoformat() for n in (2, 1, 0)]
+    rows = [(day[2], 2500.0, 615.0), (day[1], 3100.0, 630.0), (day[0], 3000.0, 600.0), (day[0], 3000.0, 600.0)]
+    coach = _make_hydration_coach(_HydrationDB(cs=rows))
+    coach.cs_tracker = CriticalSpeedTracker()
+    coach._hydrate_engines_from_db()
+    assert len(coach.cs_tracker.cs_raw_history) == 1
+    assert _cs_lock(coach.cs_tracker)["locked"] is True
+
+
+@pytest.mark.unit
+def test_1350_a_valid_estimate_is_kept_when_a_later_fit_is_negative():
+    """Two sound trials give CS > 0; a third that turns the fit negative is dropped."""
+    tracker = _hydrated_cs_tracker([(3000.0, 600.0), (5000.0, 1100.0), (20000.0, 700.0)])
+    assert len(tracker.cs_raw_history) == 1
+    assert tracker.cs_smoothed is not None and tracker.cs_smoothed > 0
+
+
+@pytest.mark.unit
+def test_1350_a_fit_with_a_negative_d_prime_does_not_reach_the_tracker(monkeypatch):
+    from titan.science.critical_speed import CriticalSpeedEngine
+
+    monkeypatch.setattr(CriticalSpeedEngine, "estimate_cs_and_dprime", staticmethod(lambda _p: (4.0, -50.0)))
+    tracker = _hydrated_cs_tracker(_PAIR_1349)
+    assert tracker.cs_raw_history == []
+    assert _cs_lock(tracker)["locked"] is True
+
+
+@pytest.mark.unit
+def test_cs_hydrated_event_reports_distinct_trials_and_rejected_fits(monkeypatch):
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+    _hydrated_cs_tracker(_PAIR_1349 * 3)
+    _hydrated_cs_tracker(_INCOMPATIBLE_1350)
+    hydrated = [e for e in events if e["action"] == "cs_hydrated"]
+    assert [(e["performances"], e["distinct_trials"], e["rejected_fits"]) for e in hydrated] == [(6, 2, 0), (6, 6, 5)]
 
 
 @pytest.mark.unit

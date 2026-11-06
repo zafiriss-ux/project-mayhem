@@ -2640,17 +2640,30 @@ class DailyCoach:
             # second on, as if each had been ingested when it was run (D-040).
             # The tracker's confidence counts updates; one update for all trials
             # kept it at 60% at most, under the 70% lock threshold.
-            chronological = list(reversed(perfs))
+            chronological = [(day, float(dist), float(t)) for day, dist, t in reversed(perfs)]
+            rejected_fits = 0
             for k in range(2, len(chronological) + 1):
                 window = chronological[:k]
+                # ING-NEW-03 (#1349): a trial entered more than once is one trial.
+                # A repeat adds no evidence, so it adds no update (confidence).
+                # The windows are the same as before; only updates are dropped,
+                # never added, so the lock is on at least as often.
+                if window[-1] in window[:-1]:
+                    continue
                 cs_raw, d_prime = CriticalSpeedEngine.estimate_cs_and_dprime(
                     [(dist, t) for _, dist, t in window]
                 )
-                if cs_raw and d_prime:
+                # ING-NEW-04 (#1350): a fit with CS or D' at or below zero is not
+                # a valid estimate; it must not reach the tracker or its confidence.
+                if cs_raw is not None and d_prime is not None and cs_raw > 0 and d_prime > 0:
                     self.cs_tracker.update(window[-1][0], cs_raw, d_prime)
+                else:
+                    rejected_fits += 1
             _daily_coach_event(
                 "cs_hydrated",
                 performances=len(perfs),
+                distinct_trials=len(set(chronological)),
+                rejected_fits=rejected_fits,
                 confidence=f"{self.cs_tracker.confidence:.0%}",
                 archetype=self.cs_tracker.archetype,
             )
