@@ -10,7 +10,7 @@ import json
 import logging
 import os
 import sqlite3
-from contextlib import suppress
+from contextlib import nullcontext, suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -615,19 +615,31 @@ class OperationsRepository:
             # Leftovers of any earlier interrupted run, today's or an older day's.
             for stale in backup_dir.glob("titan_????-??-??.db.partial"):
                 stale.unlink(missing_ok=True)
-            with self._db._lock:
-                self._db._ensure_open_locked()
-                dst_conn = sqlite3.connect(str(partial))
-                try:
-                    self._db.conn.backup(dst_conn)
-                    # One self-contained file, so the rename below moves all of it
-                    # (no ``-wal``/``-shm`` left beside the ``.partial`` name).
-                    dst_conn.execute("PRAGMA journal_mode=DELETE")
-                finally:
-                    dst_conn.close()
-                source_version = int(self._db.conn.execute("PRAGMA user_version").fetchone()[0])
+            # #1252: the database and the pending-audit queue are copied under one shared
+            # queue lock, so no drain (it takes the lock exclusively) can move a withdrawal
+            # from the queue into the database between the two copies. The queue lock is
+            # taken before ``_lock``, as everywhere (ADR-0079 §4).
+            queue = self._db.pending_audit
+            with queue.locked(exclusive=False) if queue is not None else nullcontext():
+                with self._db._lock:
+                    self._db._ensure_open_locked()
+                    dst_conn = sqlite3.connect(str(partial))
+                    try:
+                        os.chmod(partial, 0o600)  # health data: the owner only (#1252 review)
+                        self._db.conn.backup(dst_conn)
+                        # One self-contained file, so the rename below moves all of it
+                        # (no ``-wal``/``-shm`` left beside the ``.partial`` name).
+                        dst_conn.execute("PRAGMA journal_mode=DELETE")
+                    finally:
+                        dst_conn.close()
+                    source_version = int(self._db.conn.execute("PRAGMA user_version").fetchone()[0])
+                queue_snapshot = queue.path.read_bytes() if queue is not None and queue.path.exists() else None
             problem = _verify_backup_artifact(partial, expected_user_version=source_version)
             if problem is None:
+                # The queue copy is in place before the database copy gets its dated name, so
+                # a dated backup never stands without the queue it was taken with (#1252).
+                # A queue that cannot be copied fails the backup, as a bad database copy does.
+                self._write_pending_audit_copy(dest, queue_snapshot)
                 partial.replace(dest)
         except Exception as exc:
             problem = f"{type(exc).__name__}: {exc}"
@@ -649,40 +661,31 @@ class OperationsRepository:
                 "integrity": "ok",
             })
         )
-        self._backup_pending_audit(dest)
         self._db._prune_old_backups(backup_dir, keep=keep, keep_weekly=keep_weekly)
         return dest
 
-    def _backup_pending_audit(self, dest: Path) -> None:
-        """Copy the pending-audit queue beside today's backup (ADR-0079, Consequences).
+    @staticmethod
+    def _write_pending_audit_copy(dest: Path, snapshot: bytes | None) -> None:
+        """Put the queue copy read with the database copy beside *dest* (ADR-0079, #1252).
 
-        Taken under the shared queue lock, so the copy is never a half-compacted file. A
-        restore then knows of the withdrawals still waiting. A failure is logged and counted;
-        the database backup stays valid.
+        Written in full under a temporary name, fsynced and renamed, readable by the owner
+        only. With no queue (*snapshot* None) a copy left by an earlier run is removed, so
+        the backup is never paired with a queue it was not taken with. Raises on failure.
         """
-        queue = self._db.pending_audit
-        if queue is None:
-            return
         target = dest.with_name(dest.stem + ".pending_audit.jsonl")
+        if snapshot is None:
+            target.unlink(missing_ok=True)
+            return
+        tmp = target.with_name(target.name + ".partial")
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         try:
-            with queue.locked(exclusive=False):
-                if not queue.path.exists():
-                    return
-                data = queue.path.read_bytes()
-            fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-            try:
-                os.write(fd, data)
-                os.fsync(fd)
-            finally:
-                os.close(fd)
-        except Exception as exc:
-            from titan.core.database import _log
-
-            _log.critical(json.dumps({"flow": "database", "action": "pending_audit_backup_failed", "error_class": type(exc).__name__}))
-            with suppress(Exception):
-                from titan.observability.metrics import get_metrics
-
-                get_metrics().counter("backup_failure_total")
+            view = memoryview(snapshot)
+            while view:
+                view = view[os.write(fd, view):]
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        os.replace(tmp, target)
 
     def _record_backup_failure(self, dest: Path, problem: str) -> None:
         """Quarantine a failed backup artifact; log CRITICAL and count the failure."""

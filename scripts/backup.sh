@@ -28,39 +28,51 @@ fi
 # interrupted or overlapping run never leaves a titan_core.db.YYYYMMDD that looks finished
 # (#1451, BKP-NEW-01). A leftover partial is removed by the prune below.
 PARTIAL_FILE="$(mktemp "$BACKUP_DIR/.titan_core.db.$DATE.partial.XXXXXX")"
+QUEUE_PARTIAL="$PARTIAL_FILE.queue"
+QUEUE_BACKUP="$BACKUP_DIR/pending_audit.jsonl.$DATE"
+trap 'rm -f "$PARTIAL_FILE" "$PARTIAL_FILE-journal" "$QUEUE_PARTIAL"' EXIT
+# The database and the pending-audit queue of consent withdrawals (ADR-0079) are copied
+# under one shared queue lock (fcntl, as TITAN takes it), so no drain can move a
+# withdrawal from the queue into the database between the two copies (#1252). The
+# integrity check runs after the lock is let go.
 python3 -c "
-import sqlite3, sys
-src = sys.argv[1]
-dst = sys.argv[2]
-con = sqlite3.connect(src)
+import fcntl, os, shutil, sqlite3, sys
+data, dst, queue_dst = sys.argv[1], sys.argv[2], sys.argv[3]
+lock = os.open(os.path.join(data, 'pending_audit.lock'), os.O_RDWR | os.O_CREAT, 0o600)
+try:
+    fcntl.flock(lock, fcntl.LOCK_SH)
+    con = sqlite3.connect(os.path.join(data, 'titan_core.db'))
+    bak = sqlite3.connect(dst)
+    with bak:
+        con.backup(bak)
+    bak.close()
+    con.close()
+    queue = os.path.join(data, 'pending_audit.jsonl')
+    if os.path.exists(queue):
+        shutil.copyfile(queue, queue_dst)
+finally:
+    os.close(lock)
 bak = sqlite3.connect(dst)
-with bak:
-    con.backup(bak)
 ok = bak.execute('PRAGMA integrity_check').fetchone()
 pages = bak.execute('PRAGMA page_count').fetchone()
 bak.close()
-con.close()
 if ok is None or ok[0] != 'ok':
     sys.exit(f'Backup FAILED integrity_check: {ok}')
 if not pages or pages[0] < 1:
     sys.exit('Backup FAILED: empty database')
-" "$DB_FILE" "$PARTIAL_FILE" || { rm -f "$PARTIAL_FILE" "$PARTIAL_FILE-journal"; exit 1; }
-mv -f "$PARTIAL_FILE" "$BACKUP_FILE"
-echo "Backup OK: $BACKUP_FILE"
+" "$DATA_DIR" "$PARTIAL_FILE" "$QUEUE_PARTIAL"
 
-# The pending-audit queue of consent withdrawals goes with the database (ADR-0079).
-# The copy is taken under the shared queue lock when flock is available.
-QUEUE_FILE="$DATA_DIR/pending_audit.jsonl"
-if [ -f "$QUEUE_FILE" ]; then
-  QUEUE_BACKUP="$BACKUP_DIR/pending_audit.jsonl.$DATE"
-  ( umask 077
-    if command -v flock >/dev/null 2>&1; then
-      flock -s "$DATA_DIR/pending_audit.lock" cp "$QUEUE_FILE" "$QUEUE_BACKUP"
-    else
-      cp "$QUEUE_FILE" "$QUEUE_BACKUP"
-    fi )
+# The queue copy is in place before the database copy gets its dated name, so a dated
+# backup never stands beside a queue copy it was not taken with (#1252).
+if [ -f "$QUEUE_PARTIAL" ]; then
+  mv -f "$QUEUE_PARTIAL" "$QUEUE_BACKUP"
   echo "Pending-audit queue copied: $QUEUE_BACKUP"
+else
+  rm -f "$QUEUE_BACKUP"
 fi
+mv -f "$PARTIAL_FILE" "$BACKUP_FILE"
+trap - EXIT
+echo "Backup OK: $BACKUP_FILE"
 
 # Prune old backups (keep last 7)
 find "$BACKUP_DIR" \

@@ -310,3 +310,130 @@ def test_1251_a_missing_queue_copy_is_reported(live, tmp_path: Path) -> None:
 
     assert result["ok"] is True and result["queue_copy_found"] is False, result
     assert result["withdrawals_in_backup"] == 0
+
+
+# ── #1252 (DR-NEW-02): the database and the queue are copied as one snapshot ──
+
+
+def test_1252_a_drain_during_the_backup_cannot_lose_the_withdrawal(
+    live, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import threading
+
+    import titan.core.database as database_mod
+
+    verify = database_mod._verify_backup_artifact
+    drained: list[int] = []
+
+    def _verify_while_a_drain_runs(path, **kwargs):
+        # The issue's interleaving: a drain right after the database was copied (once).
+        if drained:
+            return verify(path, **kwargs)
+        worker = threading.Thread(target=lambda: drained.append(live.drain_pending_audit()), daemon=True)
+        worker.start()
+        worker.join(timeout=5)
+        assert drained == [0]
+        return verify(path, **kwargs)
+
+    monkeypatch.setattr(database_mod, "_verify_backup_artifact", _verify_while_a_drain_runs)
+    dest = live.backup_database(backup_dir=tmp_path / "backups")
+    assert dest is not None and drained == [0]
+    assert not live.has_current_consent(_A)
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+
+    result = _load("restore_backup").restore(dest, fresh)
+
+    assert result["ok"] is True, result
+    assert _consent_after_start(fresh) == (False, False)
+
+
+def test_1252_the_shell_backup_copies_the_database_under_the_queue_lock(live, tmp_path: Path) -> None:
+    import fcntl
+    import os
+    import time
+
+    data = live.db_path.parent
+    lock = os.open(data / "pending_audit.lock", os.O_RDWR | os.O_CREAT, 0o600)
+    fcntl.flock(lock, fcntl.LOCK_EX)  # a drain is running
+    try:
+        run = subprocess.Popen(  # nosec B603 B607 - the repo's own script on synthetic data
+            ["bash", str(_ROOT / "scripts" / "backup.sh"), str(data)],
+            cwd=_ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        time.sleep(1.5)
+        assert run.poll() is None, "the backup must wait for the queue lock"
+        assert not list((data / "backups").glob("titan_core.db.*")), "no database copy before the queue lock"
+    finally:
+        fcntl.flock(lock, fcntl.LOCK_UN)
+        os.close(lock)
+    out, err = run.communicate(timeout=30)
+    assert run.returncode == 0, err
+    (backup,) = (data / "backups").glob("titan_core.db.*")
+    (copy,) = (data / "backups").glob("pending_audit.jsonl.*")
+    assert copy.read_bytes() == PendingAuditQueue(data).path.read_bytes()
+    assert copy.stat().st_mode & 0o077 == 0
+    live.close()
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+    assert _load("restore_backup").restore(backup, fresh)["ok"] is True
+    assert _consent_after_start(fresh) == (False, False)
+
+
+def test_1252_a_drain_waits_while_the_database_is_copied(live, tmp_path: Path) -> None:
+    import threading
+
+    ensure_open = live._ensure_open_locked
+    started: list[threading.Thread] = []
+
+    def _start_a_drain_inside_the_copy() -> None:
+        ensure_open()
+        if not started:  # inside the copy: the queue lock and the database lock are held
+            worker = threading.Thread(target=live.drain_pending_audit, daemon=True)
+            worker.start()
+            worker.join(timeout=0.5)
+            assert worker.is_alive(), "a drain must wait until the database and the queue are copied"
+            started.append(worker)
+
+    live._ensure_open_locked = _start_a_drain_inside_the_copy
+    try:
+        dest = live.backup_database(backup_dir=tmp_path / "backups")
+    finally:
+        del live._ensure_open_locked
+    started[0].join(timeout=5)
+    assert dest is not None and not started[0].is_alive()
+    copy = dest.with_name(dest.stem + ".pending_audit.jsonl")
+    (item,) = _queue_items(copy)
+    assert item["athlete_id"] == _A
+
+
+def _queue_items(copy: Path) -> list[dict]:
+    return _load("restore_backup").read_queue_copy(copy)
+
+
+def test_1252_a_queue_that_cannot_be_copied_fails_the_backup(live, tmp_path: Path) -> None:
+    backups = tmp_path / "backups"
+    backups.mkdir()
+    date = datetime.now(UTC).strftime("%Y-%m-%d")
+    (backups / f"titan_{date}.pending_audit.jsonl.partial").mkdir()  # the copy cannot be written
+
+    assert live.backup_database(backup_dir=backups) is None
+
+    assert not (backups / f"titan_{date}.db").exists()
+    assert (backups / f"titan_{date}.db.corrupt").exists()
+
+
+def test_1252_a_backup_without_a_queue_removes_an_old_queue_copy(tmp_path: Path) -> None:
+    db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path / "live")
+    backups = tmp_path / "backups"
+    backups.mkdir()
+    date = datetime.now(UTC).strftime("%Y-%m-%d")
+    stale = backups / f"titan_{date}.pending_audit.jsonl"
+    stale.write_text('{"id": "x"}\n')
+    try:
+        dest = db.backup_database(backup_dir=backups)
+    finally:
+        db.close()
+
+    assert dest is not None and not stale.exists()
+    assert dest.stat().st_mode & 0o077 == 0
