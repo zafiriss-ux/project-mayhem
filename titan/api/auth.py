@@ -114,6 +114,10 @@ class AuthStore:
     def revoke_refresh_token(self, jti: str) -> None:
         self._db.set_auth_token_revoked(jti)
 
+    def consume_refresh_token(self, jti: str) -> bool:
+        """Use a refresh token once: True only for the one call that revoked it (#1392)."""
+        return self._db.consume_auth_token(jti, _utc_now().isoformat())
+
     def is_refresh_token_active(self, jti: str) -> bool:
         row = self._db.get_auth_token(jti)
         if row is None or row["revoked"]:

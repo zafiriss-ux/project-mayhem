@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## AUTH-NEW-01 / #1392 — a refresh token is used once, also by two refreshes at the same moment (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1392; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — authentication. **Severity:** HIGH (issue; authentication path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0048 (refresh rotation on every use; the old token is invalidated).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1392 only: `/auth/refresh` uses the old refresh token up in one check-and-revoke SQL statement (`UPDATE ... WHERE id = ? AND revoked = 0`, row count 1). Only the request whose statement revoked it gets a new session; a concurrent second request with the same token gets 401 (`REFRESH_TOKEN_REUSED`). A failed statement rolls back and fails the request. Login, logout, the active check and token creation are unchanged.
+Deliverable: the atomic consumption, regression tests (two refreshes with one token held together after the active check → one 200, one 401, one active token; the store consumes a token once, an unknown token never), full canonical gates, independent review with the extra security review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1392 closes after merge and green main.
+Canonical doc update: this brief, the BIO-NEW-01 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1392), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions; this is an authentication change, so condition (4) needs the extra independent security review.
+Allowed / Forbidden: `titan/core/repositories/access.py` (`consume_auth_token`), `titan/core/database.py` (its wrapper), `titan/api/auth.py` (`consume_refresh_token`), `titan/api/main.py` (`/auth/refresh` only), `tests/titan/api/test_auth.py`, `tests/test_db_repositories.py` (facade list), the records above. No schema, cookie, CSRF, rate-limit, token-lifetime or login change.
+
+---
+
 ## BIO-NEW-01 / #1456 — a same-day HRV resync above 300 ms counts as missing; a stricter earlier result stays (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1456; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — safety gate (H2). **Severity:** HIGH (issue; governance/safety-gate path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0073 point 2 (today's HRV above 300 ms counts as missing, H2 missing-data ceiling; an older stricter REST does not loosen).
+**Status:** RESOLVED 2026-11-06 — PR #1488, squash `3055433`; main green; issue #1456 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — safety gate (H2). **Severity:** HIGH (issue; governance/safety-gate path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0073 point 2 (today's HRV above 300 ms counts as missing, H2 missing-data ceiling; an older stricter REST does not loosen).
 
 Pass type: implementation
 Change Type: implementation

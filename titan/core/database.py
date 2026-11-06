@@ -926,6 +926,10 @@ class DatabaseManager:
         """Mark a refresh token as revoked."""
         self._access.set_auth_token_revoked(jti=jti)
 
+    def consume_auth_token(self, jti: str, now_iso: str) -> bool:
+        """Revoke a refresh token only if unrevoked and unexpired; True when this call did it (#1392)."""
+        return self._access.consume_auth_token(jti=jti, now_iso=now_iso)
+
     def delete_expired_auth_tokens(self, before_iso: str) -> None:
         """Delete auth_tokens with expires_at < before_iso (housekeeping)."""
         self._access.delete_expired_auth_tokens(before_iso=before_iso)

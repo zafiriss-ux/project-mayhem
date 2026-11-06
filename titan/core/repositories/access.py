@@ -219,6 +219,26 @@ class AccessRepository:
             )
             self._db.conn.commit()
 
+    def consume_auth_token(self, jti: str, now_iso: str) -> bool:
+        """Revoke a refresh token only if it is unrevoked and unexpired; True when this call did it.
+
+        One statement checks and revokes, so two refreshes with the same token can never
+        both consume it (#1392, ADR-0048 single use). A failure rolls back and raises.
+        """
+        with self._db._lock:
+            try:
+                cur = self._db.conn.cursor()
+                cur.execute(
+                    "UPDATE auth_tokens SET revoked = 1 WHERE id = ? AND revoked = 0 AND expires_at > ?",
+                    (jti, now_iso),
+                )
+                consumed = cur.rowcount == 1
+                self._db.conn.commit()
+            except Exception:
+                self._db.conn.rollback()
+                raise
+            return consumed
+
     def delete_expired_auth_tokens(self, before_iso: str) -> None:
         """Delete auth_tokens with expires_at < before_iso (housekeeping)."""
         with self._db._lock:
