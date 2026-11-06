@@ -391,15 +391,13 @@ jobs:
       - name: Backup integrity — create test DB + backup
         run: |
           python3 -c "
-          import sqlite3, pathlib
+          import pathlib
+          from titan.core.database import DatabaseManager
           d = pathlib.Path('/tmp/titan_test')
           d.mkdir(exist_ok=True)
           (d/'backups').mkdir(exist_ok=True)
-          conn = sqlite3.connect(str(d/'titan_core.db'))
-          conn.execute('CREATE TABLE t (id INTEGER)')
-          conn.execute('INSERT INTO t VALUES(1)')
-          conn.commit()
-          conn.close()
+          # A real (synthetic) TITAN database: verify_backup.py passes only those (#1451).
+          DatabaseManager(db_name='titan_core.db', db_dir=d).close()
           import subprocess
           subprocess.run(['bash', 'scripts/backup.sh', str(d)], check=True)
           "

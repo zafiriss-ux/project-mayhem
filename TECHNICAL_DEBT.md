@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## BKP-NEW-01 / #1451 — a manual backup passes verification only when it is a usable TITAN database (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1451; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — data recovery. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies AGENTS DR-02/DR-03 (a backup is checked before it is relied on; the restore drill's core tables).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1451 only: (1) `scripts/backup.sh` writes the manual backup under a hidden `.titan_core.db.YYYYMMDD.partial` and renames it only after the copy finished, so an interrupted backup never has the finished name; (2) `scripts/verify_backup.py` checks only finished `titan_core.db.YYYYMMDD` files (never a partial or a SQLite sidecar) and passes one only when it is a usable TITAN database: not empty, integrity `ok`, `user_version` from 1 to SCHEMA_VERSION (older migrates on start as before; newer is refused, as the code itself refuses it), and the restore drill's core tables present. The runbook paragraph says so. No change to the worker's automated backups, the restore drill (#1452) or any compatibility policy beyond refusing what the code cannot open.
+Deliverable: the two script changes, regression tests (0-byte, non-TITAN, TITAN version without core tables, no athletes, newer version, symlink → fail; older version and current → pass; a backup that stops before the rename leaves no finished file; a partial or sidecar file is never the one verified; a finished backup is owner-only and leaves no partial), full canonical gates, independent review with the extra review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1451 closes after merge and green main. The joint recovery acceptance D03 (#1451 #1452 #1251 #1252 #1255) stays with those issues.
+Canonical doc update: this brief, the AUTH-NEW-01 closure line, `docs/runbooks/database-recovery.md` (Backup Verification paragraph), CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1451), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions; HIGH issue, so condition (4) needs the extra independent review.
+Allowed / Forbidden: `scripts/backup.sh`, `scripts/verify_backup.py`, `tests/test_backup_verification.py`, `docs/runbooks/database-recovery.md` (that paragraph), `.github/workflows/ci.yml` (only the backup-integrity step's test database, now a real synthetic TITAN database), the records above. No schema, worker backup, restore drill or `titan/` change.
+
+---
+
 ## AUTH-NEW-01 / #1392 — a refresh token is used once, also by two refreshes at the same moment (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1392; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — authentication. **Severity:** HIGH (issue; authentication path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0048 (refresh rotation on every use; the old token is invalidated).
+**Status:** RESOLVED 2026-11-06 — PR #1489, squash `85e79b3`; main green; issue #1392 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — authentication. **Severity:** HIGH (issue; authentication path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0048 (refresh rotation on every use; the old token is invalidated).
 
 Pass type: implementation
 Change Type: implementation
