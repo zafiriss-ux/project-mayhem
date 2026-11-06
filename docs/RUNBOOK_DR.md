@@ -67,19 +67,14 @@ python -m pytest tests/ -k db_integrity -v
    ```bash
    docker compose stop titan-api titan-worker
    ```
-3. Κράτα την τωρινή βάση μαζί με το `-wal` της (οι τελευταίες εγγραφές μπορεί να είναι μόνο εκεί), σβήσε το παλιό `-wal`/`-shm` και βάλε στη θέση της το αντίγραφο (άλλαξε την ημερομηνία):
+3. Βάλε το αντίγραφο στη θέση της βάσης μαζί με την ουρά ανακλήσεων που έχει δίπλα του (άλλαξε την ημερομηνία):
    ```bash
-   docker compose run --rm --no-deps --entrypoint sh titan-worker -c \
-     "if [ -e /data/titan_core.db.before-restore ] || [ -e /data/titan_core.db.before-restore-wal ]; then echo 'Υπάρχει ήδη titan_core.db.before-restore: μετακίνησέ το μαζί με το -wal του και ξανατρέξε' >&2; exit 1; fi && \
-      cp /data/titan_core.db /data/titan_core.db.before-restore && \
-      if [ -f /data/titan_core.db-wal ]; then cp /data/titan_core.db-wal /data/titan_core.db.before-restore-wal; fi && \
-      rm -f /data/titan_core.db-wal /data/titan_core.db-shm && \
-      cp /backups/titan_2026-10-06.db /data/titan_core.db"
+   docker compose run --rm --no-deps titan-worker python scripts/restore_backup.py /backups/titan_2026-10-06.db
    ```
-   Το `titan_core.db.before-restore-wal` ανήκει στο `titan_core.db.before-restore`: κράτα τα μαζί (RC-03). Το βήμα σταματά αν υπάρχει ήδη `.before-restore`, για να μη γράψει πάνω σε κρατημένο αντίγραφο ούτε να μείνει δίπλα του `-wal` άλλης βάσης. Για δεύτερη δοκιμή με παλαιότερο αντίγραφο, χωρίς να αγγίξεις το κρατημένο:
+   Το `restore_backup.py` κρατά την τωρινή βάση μαζί με το `-wal` της ως `titan_core.db.before-restore` (`-wal`) (οι τελευταίες εγγραφές μπορεί να είναι μόνο στο `-wal`), σβήνει το παλιό `-wal`/`-shm` και βάζει στη θέση της το αντίγραφο. Πριν από αυτό προσθέτει στην ουρά ανακλήσεων (`pending_audit.jsonl`) όσες ανακλήσεις συγκατάθεσης (/stop) περιμένουν στο `titan_2026-10-06.pending_audit.jsonl` και όσες είναι γραμμένες στην τωρινή βάση (και μετά την ώρα του αντιγράφου), και κρατά όσες περιμένουν ήδη. Ο worker τις γράφει στη βάση όταν ξεκινήσει. Αν η τωρινή βάση δεν διαβάζεται, η εντολή σταματά: έλεγξε με το χέρι ποιοι αθλητές έχουν σταματήσει και ξανατρέξε με `--skip-live-withdrawals`. Μην αντιγράφεις μόνο τη βάση με `cp`: μια ανάκληση που ήταν μόνο στην ουρά χάνεται και ο αθλητής φαίνεται ξανά να συναινεί (#1251, ADR-0079). Αν η ουρά του αντιγράφου δεν διαβάζεται, η εντολή σταματά χωρίς να αλλάξει τίποτα.
+   Το `titan_core.db.before-restore-wal` ανήκει στο `titan_core.db.before-restore`: κράτα τα μαζί (RC-03). Η εντολή σταματά αν υπάρχει ήδη `.before-restore`, για να μη γράψει πάνω σε κρατημένο αντίγραφο. Για δεύτερη δοκιμή με παλαιότερο αντίγραφο, χωρίς να αγγίξεις το κρατημένο:
    ```bash
-   docker compose run --rm --no-deps --entrypoint sh titan-worker -c \
-     "rm -f /data/titan_core.db-wal /data/titan_core.db-shm && cp /backups/titan_2026-10-05.db /data/titan_core.db"
+   docker compose run --rm --no-deps titan-worker python scripts/restore_backup.py /backups/titan_2026-10-05.db --again
    ```
 4. Ξεκίνα και επιβεβαίωσε:
    ```bash

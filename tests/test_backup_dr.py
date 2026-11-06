@@ -14,6 +14,7 @@ import logging
 import shutil
 import sqlite3
 import subprocess
+import sys
 from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -349,12 +350,20 @@ _BACKUP_PLACEHOLDER = "~/Documents/TITAN/backups/titan_core.db.YYYYMMDD"
 
 
 def _scenario_b_file_commands() -> list[str]:
-    """The file-handling lines of Scenario B in database-recovery.md (cp, mv, rm, tests)."""
+    """The file-handling lines of Scenario B in database-recovery.md (cp, mv, rm, tests, restore_backup.py)."""
     text = (_ROOT / "docs" / "runbooks" / "database-recovery.md").read_text(encoding="utf-8")
     section = text.split("### Scenario B", 1)[1].split("### Scenario C", 1)[0]
     block = section.split("```bash", 1)[1].split("```", 1)[0]
     lines = [line.strip() for line in block.splitlines()]
-    return [line for line in lines if line.split(" ", 1)[0] in {"cp", "mv", "rm", "["}]
+    return [
+        line for line in lines
+        if line.split(" ", 1)[0] in {"cp", "mv", "rm", "["} or line.startswith("python3 scripts/restore_backup.py")
+    ]
+
+
+def _runnable(command: str) -> str:
+    """A runbook line with the project's interpreter and the repo's script path (#1251)."""
+    return command.replace("python3 scripts/", f"{sys.executable} {_ROOT / 'scripts'}/")
 
 
 def _rows(path: Path) -> int:
@@ -369,6 +378,8 @@ def _backup_and_crashed_live_db(backup: Path, live_dir: Path) -> None:
     """A backup with 1 row, and a live database after a crash: its pages plus 18 rows only in its -wal."""
     conn = sqlite3.connect(backup)
     conn.execute("CREATE TABLE t (x)")
+    # The consent table restore_backup.py reads the recorded withdrawals from (#1251).
+    conn.execute("CREATE TABLE consent_log (athlete_id TEXT, consent_type TEXT, granted_at TEXT, revoked_at TEXT)")
     conn.execute("INSERT INTO t VALUES (1)")
     conn.commit()
     conn.close()
@@ -394,7 +405,10 @@ def test_local_restore_runbook_brings_back_the_backup_and_keeps_the_old_wal(tmp_
 
     commands = _scenario_b_file_commands()
     assert any(_BACKUP_PLACEHOLDER in c for c in commands)
-    script = "\n".join(c.replace(_BACKUP_PLACEHOLDER, str(backup)) for c in commands)
+    script = "\n".join(
+        _runnable(c).replace(_BACKUP_PLACEHOLDER, str(backup)).replace("~/Documents/TITAN", str(live_dir))
+        for c in commands
+    )
     result = subprocess.run(["bash", "-c", script], cwd=live_dir, check=False, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
 
@@ -407,15 +421,16 @@ def test_local_restore_runbook_brings_back_the_backup_and_keeps_the_old_wal(tmp_
 # ── RC-03: the Docker restore runbook (RUNBOOK_DR.md step 3) ────────────────
 
 
-def _docker_restore_script() -> str:
-    """The ``sh -c "..."`` script of step 3 of the Docker restore in RUNBOOK_DR.md."""
+def _docker_restore_script(data: Path, backups: Path) -> str:
+    """The restore command of step 3 of the Docker restore in RUNBOOK_DR.md, run on *data* and *backups*."""
     text = (_ROOT / "docs" / "RUNBOOK_DR.md").read_text(encoding="utf-8")
     section = text.split("## Επαναφορά (Docker)", 1)[1]
     step3 = section.split("\n3. ", 1)[1].split("\n4. ", 1)[0]
-    block = step3.split("```bash", 1)[1].split("```", 1)[0]
-    script = block.split('-c \\', 1)[1].split("```", 1)[0].strip()
-    assert script.startswith('"') and script.endswith('"'), script
-    return script[1:-1].replace("\\\n", "")  # bash drops backslash-newline inside double quotes
+    block = step3.split("```bash", 1)[1].split("```", 1)[0].strip()
+    prefix = "docker compose run --rm --no-deps titan-worker python scripts/restore_backup.py "
+    assert block.startswith(prefix), block
+    args = block[len(prefix):].replace("/backups/", f"{backups}/")
+    return f"{sys.executable} {_ROOT / 'scripts' / 'restore_backup.py'} {args} --data-dir {data}"
 
 
 @pytest.mark.skipif(shutil.which("sh") is None, reason="the runbook script is sh")
@@ -425,7 +440,7 @@ def test_docker_restore_runbook_keeps_the_old_wal_with_the_kept_copy(tmp_path: P
     data = tmp_path / "data"
     _backup_and_crashed_live_db(backups / "titan_2026-10-06.db", data)
 
-    script = _docker_restore_script().replace("/data/", f"{data}/").replace("/backups/", f"{backups}/")
+    script = _docker_restore_script(data, backups)
     result = subprocess.run(["sh", "-c", script], check=False, capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
 

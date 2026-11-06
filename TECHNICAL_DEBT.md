@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## DR-NEW-01 / #1251 — a restore brings back the pending-audit queue with the database (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1251; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent / data recovery. **Severity:** HIGH (issue; consent path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0079 (a withdrawal always takes effect, also after a restore) and AGENTS DR-03.
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1251 only. New `scripts/restore_backup.py` (a script, not a `titan/` module; the module ceiling is unchanged): checks the backup, reads its pending-audit queue copy with the queue's own reader (unreadable → nothing changed, exit 1), also reads every withdrawal recorded in the database being replaced (and in a kept one) from a scratch copy with its `-wal` (unreadable → stop, unless `--skip-live-withdrawals` after a manual check), then under the queue lock adds all of them to the data directory's queue keeping those already waiting, keeps the current `-wal` then database as `.before-restore` (owner-only, fsynced, renamed into place), stages the backup and only then removes the old `-wal`/`-shm` and renames it in; refuses a newer schema, a symlinked queue copy, overwriting a kept copy (`--again` for a later try) and an `--again` that would drop a `-wal` that was not kept. `scripts/restore_drill.py` restores the queue copy beside the scratch copy, writes it as the worker does at start, and fails when a withdrawal stays queued or a stopped athlete still has a current consent. The runbook restore steps (RUNBOOK_DR.md step 3, database-recovery.md Scenario B) call the script instead of copying the database alone; their RC-02/RC-03 tests now run that command.
+Deliverable: the script, the drill check, the runbook steps, regression tests (a database-only restore turns consent back on — the finding; the script keeps the withdrawal, keeps one recorded after the backup, stops on an unreadable current database unless skipped, changes nothing on an unreadable live queue, refuses a symlinked copy and an unsafe `--again`, writes owner-only files, reports a missing queue copy, keeps the withdrawals already waiting, is not hidden by a "done" marker, stops on an unreadable copy, never overwrites a kept copy, pairs a manual backup with its copy, works from the command line; the drill writes the copy, fails on an unreadable one and when a stopped athlete keeps consent), full canonical gates, independent review plus the extra security review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1251 closes after merge and green main. A drain between the database and the queue snapshot (#1252) and a rollback of token revocations (#1255) are separate issues; the joint recovery acceptance D03 stays with them.
+Canonical doc update: this brief, the BKP-NEW-02 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl, the two runbook restore steps.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1251), category Α (tightening only, contract §13 not weakened: a withdrawal is never dropped, an unreadable queue stops the restore). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions, including the extra security review for HIGH.
+Allowed / Forbidden: `scripts/restore_backup.py` (new), `scripts/restore_drill.py`, `tests/test_restore_backup.py` (new), `tests/test_backup_dr.py`, `docs/RUNBOOK_DR.md`, `docs/runbooks/database-recovery.md`, the records above. No `titan/` change, no schema, backup producer, AGENTS.md or ADR change.
+
+---
+
 ## BKP-NEW-02 / #1452 — the restore drill checks this code's schema and that the code can open the copy (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1452; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 2 — data recovery. **Severity:** MEDIUM (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies AGENTS DR-03 (the restore drill shows the latest real backup is a usable TITAN database).
+**Status:** RESOLVED 2026-11-06 — PR #1491, squash `e10ae17`; main green; issue #1452 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 2 — data recovery. **Severity:** MEDIUM (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies AGENTS DR-03 (the restore drill shows the latest real backup is a usable TITAN database).
 
 Pass type: implementation
 Change Type: implementation
