@@ -837,3 +837,87 @@ def test_after_remove_no_column_of_any_table_names_the_athlete(db, env) -> None:
     assert mentions(maria) == []
     assert mentions("telegram:2000") == [] and mentions(f"garmin-{maria}") == []
     assert mentions(nikos), "the check must see the athlete who was not removed"
+
+
+# ── #1348 (ING-NEW-02): reproduction only, no fix in this change ──────────────
+
+_LAP_DAY = "2026-03-26"
+
+
+def _laps_of_an_athletes_run(db: DatabaseManager, tmp_path: Path) -> tuple[str, int]:
+    """Athlete B's only run, and the lap file of that run imported with the offline script."""
+    from scripts.import_activity_laps import _import_one
+    from tests.test_import_activity_laps import _make_lap_csv
+
+    athlete_id = _add(db, "B", 2002)
+    db.conn.execute(
+        "INSERT INTO training_log (athlete_id, date, session_type, distance_km, duration_sec, garmin_activity_id) "
+        "VALUES (?, ?, 'EASY', 8.0, 2400, '12345')",
+        (athlete_id, _LAP_DAY),
+    )
+    db.conn.commit()
+    csv_dir = tmp_path / "laps"
+    csv_dir.mkdir()
+    inserted, _ = _import_one(_make_lap_csv(csv_dir, num_laps=8), _LAP_DAY, False, db.db_path)
+    return athlete_id, inserted
+
+
+def _lap_rows(db: DatabaseManager) -> int:
+    return db.conn.execute(
+        "SELECT COUNT(*) FROM activity_laps WHERE activity_id = 'activity_12345'"
+    ).fetchone()[0]
+
+
+@pytest.mark.integration
+def test_1348_control_the_lap_file_of_an_athletes_run_is_stored(db, env) -> None:
+    athlete_id, inserted = _laps_of_an_athletes_run(db, env)
+
+    # Today's behaviour, needed by the two tests below. A fix that refuses laps matching no
+    # owner run (instead of naming the athlete on each lap) changes these tests on purpose.
+    assert inserted == 8
+    assert _lap_rows(db) == 8
+    # The laps are B's only by the file name: activity_12345 is B's run with Garmin id 12345.
+    assert db.conn.execute(
+        "SELECT athlete_id FROM training_log WHERE garmin_activity_id = '12345'"
+    ).fetchall() == [(athlete_id,)]
+
+
+@pytest.mark.integration
+def test_1348_control_deleting_the_athlete_removes_their_run(db, env) -> None:
+    athlete_id, _ = _laps_of_an_athletes_run(db, env)
+
+    lifecycle.delete_athlete(db, athlete_id, now=_NOW)
+
+    assert db.conn.execute(
+        "SELECT COUNT(*) FROM training_log WHERE athlete_id = ?", (athlete_id,)
+    ).fetchone()[0] == 0
+
+
+@pytest.mark.integration
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="ING-NEW-02 (#1348): activity_laps has no athlete_id, so the athlete's export leaves "
+    "out the laps of their run. Remove this mark with the fix.",
+)
+def test_1348_the_export_of_an_athlete_has_the_laps_of_their_run(db, env) -> None:
+    athlete_id, _ = _laps_of_an_athletes_run(db, env)
+
+    tables = lifecycle.export_athlete(db, athlete_id, now=_NOW)["tables"]
+
+    assert len(tables.get("activity_laps", [])) == 8
+
+
+@pytest.mark.integration
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="ING-NEW-02 (#1348): activity_laps has no athlete_id, so deleting the athlete leaves "
+    "the laps of their run. Remove this mark with the fix.",
+)
+def test_1348_deleting_an_athlete_removes_the_laps_of_their_run(db, env) -> None:
+    athlete_id, _ = _laps_of_an_athletes_run(db, env)
+
+    lifecycle.delete_athlete(db, athlete_id, now=_NOW)
+
+    assert _lap_rows(db) == 0

@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## ING-NEW-02 / #1348 — reproduction only: the laps of an athlete's run are left out of their export and kept after their deletion (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1348 (stays open; this pass does not fix it). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete data lifecycle (export / deletion, ADR-0067). **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 13: reproduction only).
+
+Pass type: reproduction
+Change Type: test-only
+Workflow Path: Path A
+Execution unit: #1348 reproduction at the current main, no application code. In `tests/test_athlete_lifecycle.py`, with the real `add_athlete`, the offline lap import `_import_one`, `export_athlete` and `delete_athlete`: athlete B's only run (Garmin id 12345) and its 8-lap file. (1) Controls: the 8 laps are stored and are B's only through the file name (`activity_12345` is B's run with Garmin id 12345), and deleting B removes B's training rows (pass; after #1347 the drift is not written to B's training row). (2) B's export has the 8 laps — `xfail(strict=True, raises=AssertionError)`: today `activity_laps` has no `athlete_id`, so `athlete_tables` leaves it out. (3) Deleting B removes the laps — same strict xfail: today the 8 laps stay after B's training rows are gone. Scope: `activity_laps` is made only by the offline script (not by a migration), and the script always writes to the operator's home database `~/Documents/TITAN/titan_core.db` (no option changes it), so the exposure exists only where an operator imported lap files. The fix (an `athlete_id` on `activity_laps` with a migration, or refusing laps that match no owner run, or both) is a separate PR and a separate decision; the second option changes the control on purpose.
+Deliverable: the four tests; an issue comment with the reproduction at this SHA.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: this pass does not close #1348; it closes with the fix PR.
+Canonical doc update: this brief, the INT-NEW-01 fix closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3, row 13 = #1347, #1348, reproduction only). No application change, so contract §13 is not touched. Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `tests/test_athlete_lifecycle.py`, the records above. No `titan/`, `scripts/`, schema, AGENTS.md or ADR change.
+
+---
+
 ## INT-NEW-01 / #1256 — fix: a run skipped as malformed makes the Garmin sync "partial", so H4 does not trust a TSB without it (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1256; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (H4). **Severity:** HIGH (issue; governance path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+**Status:** RESOLVED 2026-11-06 — PR #1510, squash `0e2fe19` (owner's decision card 2026-11-06: fix now); main green; issue #1256 closed (follow-up #1511: visibility of the skip, ADR-0080 text). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (H4). **Severity:** HIGH (issue; governance path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
 
 Pass type: implementation
 Change Type: implementation
