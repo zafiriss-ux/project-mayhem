@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## ISO-NEW-01 / #1244 — an athlete's sender sends only to the chat still bound to that athlete (owner assignment, 2026-11-05)
+
+**Status:** OPEN — tracked in GitHub issue #1244; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete isolation. **Severity:** HIGH (issue; recipient authorization). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0040 (athlete isolation) and ADR-0067 D10.1 (an athlete's messages go to their own private chat).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1244 only: `TitanTelegramBot.send_message` of an athlete other than the owner reads the athlete's binding again before every send and sends only when the stored canonical chat is still the sender's chat. Moved chat, chat now bound to another athlete, missing row, no database or a failed read: nothing is sent, the send returns False and a CRITICAL is logged (fail closed). The owner's sender (TELEGRAM_CHAT_ID from .env) is unchanged.
+Deliverable: the check, regression tests (the issue's A→B rebind through the worker's own sender, moved chat, missing account, unreadable binding, no database, no stored chat, legacy non-canonical stored chat; controls: unchanged chat, new sender after the move, owner), full canonical gates, independent review with the extra authorization-path review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1244 closes after merge and green main.
+Canonical doc update: this brief, the PRIV-NEW-03 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1244), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions; this is an authorization-path change, so condition (4) needs the extra independent security review.
+Allowed / Forbidden: `titan/integrations/telegram_bot.py` (`send_message` and its new check only), `tests/test_telegram_per_athlete.py`, the records above. No schema, binding rule, worker retry or message-content change.
+
+---
+
 ## PRIV-NEW-03 / #1380 — a damaged deletion record leaves no recorded athlete ready (owner assignment, 2026-11-05)
 
-**Status:** OPEN — tracked in GitHub issue #1380; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — privacy. **Severity:** HIGH (issue). **Change Type:** implementation (regression evidence). **Workflow Path:** A. Category Α.
+**Status:** RESOLVED 2026-11-05 — PR #1479, squash `aedf0b2`; main green; issue #1380 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — privacy. **Severity:** HIGH (issue). **Change Type:** implementation (regression evidence). **Workflow Path:** A. Category Α.
 
 Pass type: implementation
 Change Type: implementation
