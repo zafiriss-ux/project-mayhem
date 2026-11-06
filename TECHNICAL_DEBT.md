@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## E2E-01 / #1246 — reproduction only: the CLI "Σημερινό Πλάνο" shows the plan's session, not the stored decision of the day (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1246 (stays open; this pass does not fix it). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — the final instruction the athlete sees. **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 15: reproduction, after rows 3–7, which are closed).
+
+Pass type: reproduction
+Change Type: test-only
+Workflow Path: Path A
+Execution unit: #1246 reproduction at the current main, no application code. In `tests/test_menu_system.py`, with a real `DatabaseManager` in a temporary directory, the real `save_governance_decision` / `get_governance_decision_on` and the real `menu_daily_plan`, and a synthetic weekly plan whose session today is LONG_RUN 5.1 km: (1) control, the stored decision of today is REST (passes); (2) control, with no stored decision the screen shows the plan's session (passes; what a fix shows on a day with no decision yet is its own choice, and changing this control is then on purpose); (3) with REST stored, the instruction line is not the plan's `ΠΡΟΠΟΝΗΣΗ: LONG_RUN` and the screen shows REST (a fix may still name the planned session next to the decision) — `xfail(strict=True, raises=AssertionError)`: today `menu_daily_plan` reads only `last_weekly_plan` and never the stored decision. The fix (read the athlete's stored decision of the day first) is a separate PR and a separate decision.
+Deliverable: the three tests; an issue comment with the reproduction at this SHA.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: this pass does not close #1246; it closes with the fix PR.
+Canonical doc update: this brief, the SCI-NEW-03 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3, row 15 = #1246, reproduction after rows 3–7). No application change, so contract §13 is not touched. Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `tests/test_menu_system.py`, the records above. No `titan/`, `scripts/`, schema, AGENTS.md or ADR change.
+
+---
+
 ## SCI-NEW-03 / #1419 — reproduction on the real database path: a fit with a negative D′ no longer lifts the CS lock (owner assignment, 2026-11-06)
 
-**Status:** OPEN — in review; #1419 closes with this PR. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (CS_CONFIDENCE_LOCK). **Severity:** MEDIUM (GitHub label, kept as is per plan v3 row 14). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 14: #1349, #1350, then #1419; reproduction, then guard).
+**Status:** RESOLVED 2026-11-06 — PR #1516, squash `6daa880`; main green; #1419 closed (fit quality and effort independence carried in #1514, item 5). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (CS_CONFIDENCE_LOCK). **Severity:** MEDIUM (GitHub label, kept as is per plan v3 row 14). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 14: #1349, #1350, then #1419; reproduction, then guard).
 
 Pass type: reproduction (a regression test on the real path: the guard of #1515 already holds, so nothing here fails on main)
 Change Type: test-only
