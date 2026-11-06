@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## SCI-NEW-03 / #1419 — reproduction on the real database path: a fit with a negative D′ no longer lifts the CS lock (owner assignment, 2026-11-06)
+
+**Status:** OPEN — in review; #1419 closes with this PR. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (CS_CONFIDENCE_LOCK). **Severity:** MEDIUM (GitHub label, kept as is per plan v3 row 14). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 14: #1349, #1350, then #1419; reproduction, then guard).
+
+Pass type: reproduction (a regression test on the real path: the guard of #1515 already holds, so nothing here fails on main)
+Change Type: test-only
+Workflow Path: Path A
+Execution unit: #1419 at the current main, no application code. The issue's first dataset (3000/900, 5000/1200, 3000/880, 5000/1180, 3000/860, 5000/1160) through the real `parse_time_trial`, a real `DatabaseManager` (temporary directory) with `log_cs_performance`, the real CS hydration step, a real `CriticalSpeedTracker` and `check_cs_confidence_lock`. (1) Control: every prefix fit has CS > 0 and D′ < 0 (passes). (2) The trials keep the lock: the hydration step runs and rejects all five fits (`cs_hydrated` with 6 distinct trials and 5 rejected fits, no `cs_hydration_failed`), no update reaches the tracker and the lock is on (passes on main since the #1515 guard, which uses a fit only when CS > 0 and D′ > 0; fails on the code before #1515). The issue's other point — confidence does not weigh residuals or how independent the efforts are — is a design question, carried in #1514 (item 5 added there: fit quality such as residuals or R², and effort independence; owner decision). The issue gives its second dataset only as its fit (D′ −349 m), not its trials; any fit with D′ ≤ 0 is rejected by the same rule.
+Deliverable: the two tests; an issue comment.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1419 closes after merge and green main.
+Canonical doc update: this brief, the ING-NEW-03/04 guard closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3, row 14). No application change, so contract §13 is not touched. Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `tests/titan/orchestration/test_daily_coach.py`, the records above. No `titan/`, `scripts/`, schema, threshold, AGENTS.md or ADR change.
+
+---
+
 ## ING-NEW-03 / #1349 and ING-NEW-04 / #1350 — guard: a repeated trial counts once and a fit with CS or D' at or below zero is not used (owner assignment, 2026-11-06)
 
-**Status:** OPEN — in review; #1349 and #1350 close with this PR. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (CS_CONFIDENCE_LOCK). **Severity:** HIGH (both issues; governance path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+**Status:** RESOLVED 2026-11-06 — PR #1515, squash `37737fa`; main green; #1349 and #1350 closed (follow-up #1514). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (CS_CONFIDENCE_LOCK). **Severity:** HIGH (both issues; governance path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
 
 Pass type: implementation
 Change Type: implementation
