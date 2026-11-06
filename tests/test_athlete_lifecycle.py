@@ -24,6 +24,7 @@ from unittest.mock import MagicMock
 import pytest
 from cryptography.fernet import Fernet
 
+from tests.garmin_accounts import bind, profile_id_for, record_owner, set_token_ok
 from titan.core import athlete_lifecycle as lifecycle
 from titan.core.database import DatabaseManager
 
@@ -67,7 +68,7 @@ _OWNER_GARMIN_NAME = "owner-garmin-name"
 def db(env):
     manager = DatabaseManager(db_dir=env / "data")
     # The owner's Garmin sync has run once (ADR-0076): without it no account is bound.
-    manager.record_owner_garmin_display_name(_OWNER_GARMIN_NAME)
+    record_owner(manager, _OWNER_GARMIN_NAME)
     yield manager
     manager.close()
 
@@ -79,8 +80,8 @@ def _add(db: DatabaseManager, name: str, chat: int) -> str:
 def _seed(db: DatabaseManager, athlete_id: str, chat: int) -> None:
     """Rows in several athlete tables, as a coached athlete would have."""
     db.grant_consent(athlete_id, "v1", now=_NOW - timedelta(days=40))
-    db.bind_garmin_account(athlete_id, f"garmin-{athlete_id}")
-    db.set_garmin_token_state(athlete_id, "ok")
+    bind(db, athlete_id, f"garmin-{athlete_id}")
+    set_token_ok(db, athlete_id)
     from titan.integrations.garmin_sync import (
         athlete_token_path,  # a ready athlete has the token file (MA-F2)
     )
@@ -158,7 +159,10 @@ def _fake_garmin(monkeypatch, display_name: str = "maria-runs", social_profile=_
     it carries ``display_name``. The library fills ``client.display_name`` with the login e-mail
     when the profile has no displayName (0.3.17), which the IS-07 tests reproduce."""
     seen: dict = {}
-    profile = {"displayName": display_name} if social_profile is _FROM_DISPLAY_NAME else social_profile
+    profile = (
+        {"displayName": display_name, "profileId": profile_id_for(display_name)}
+        if social_profile is _FROM_DISPLAY_NAME else social_profile
+    )
 
     class _Garth:
         def dumps(self) -> str:
@@ -314,7 +318,7 @@ def test_relogin_binds_the_social_profile_display_name_not_the_client_attribute(
     check compares (``_token_account_matches``), never ``client.display_name``."""
     from titan.integrations.garmin_sync import relogin_athlete
 
-    seen = _fake_garmin(monkeypatch, display_name="maria@example.com", social_profile={"displayName": " maria-runs "})
+    seen = _fake_garmin(monkeypatch, display_name="maria@example.com", social_profile={"displayName": " maria-runs ", "profileId": 4242})
     athlete_id = _add(db, "Maria", 2000)
 
     assert relogin_athlete(db, athlete_id, "maria@example.com", "p", None) == "maria-runs"

@@ -29,6 +29,26 @@ _V30_REBUILT_TABLES: tuple[tuple[str, str], ...] = (
     ("consent_log", "text_version"),
 )
 
+# ADR-0083 point 1: every profileId ever recorded for the owner stays, so a row is never
+# deleted or changed. Defined once: the v36 step creates these triggers, and the manual
+# step of docs/runbooks/multi-athlete.md drops and re-creates exactly these (a test compares).
+OWNER_GARMIN_PROFILE_HISTORY_TRIGGERS: dict[str, str] = {
+    "trg_owner_garmin_profile_history_no_delete": (
+        "CREATE TRIGGER trg_owner_garmin_profile_history_no_delete\n"
+        "BEFORE DELETE ON owner_garmin_profile_history\n"
+        "BEGIN\n"
+        "    SELECT RAISE(ABORT, 'owner_garmin_profile_history rows are never deleted (ADR-0083)');\n"
+        "END"
+    ),
+    "trg_owner_garmin_profile_history_no_update": (
+        "CREATE TRIGGER trg_owner_garmin_profile_history_no_update\n"
+        "BEFORE UPDATE ON owner_garmin_profile_history\n"
+        "BEGIN\n"
+        "    SELECT RAISE(ABORT, 'owner_garmin_profile_history rows are never changed (ADR-0083)');\n"
+        "END"
+    ),
+}
+
 
 class SchemaMigrations:
     """Migration steps, run on the owning DatabaseManager's cursor."""
@@ -351,6 +371,11 @@ class SchemaMigrations:
                 "owner_garmin_identity",
                 "the owner's Garmin account name, one row (ADR-0076, M0-13-R1)",
                 None,  # DDL — see _apply_v35_migrations() below
+            ),
+            36: (
+                "athlete_accounts / owner_garmin_profile_history",
+                "the stable Garmin profileId of athletes and every one of the owner's (ADR-0083, M0-13-R2)",
+                None,  # DDL — see _apply_v36_migrations() below
             ),
         }
 
@@ -741,6 +766,18 @@ class SchemaMigrations:
                 "flow": "database", "action": "db_schema_migration",
                 "version": 35,
                 "changes": "owner_garmin_identity: the owner's Garmin account name (ADR-0076)",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
+        if current_version < 36:
+            self._db._apply_v36_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 36,
+                "changes": (
+                    "athlete_accounts.garmin_profile_id and owner_garmin_profile_history; "
+                    "athletes bound without a profileId set to expired (ADR-0083)"
+                ),
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
@@ -1806,3 +1843,45 @@ class SchemaMigrations:
                 CONSTRAINT ck_owner_garmin_identity_name CHECK (length(trim(garmin_display_name)) > 0)
             )
         """)
+
+    def _apply_v36_migrations(self, cursor) -> None:
+        """Version 36: the stable Garmin ``profileId`` (ADR-0083, M0-13-R2).
+
+        - ``athlete_accounts.garmin_profile_id``: positive, unique when present.
+        - ``owner_garmin_profile_history``: every profileId ever recorded for the owner, no
+          ``athlete_id`` column (athlete export and deletion never touch it). Triggers stop
+          every delete and change.
+        - Athletes bound before v36 (a Garmin account without a profileId) get token state
+          'expired', so they show in ``athletes list`` and wait for a relogin. Rows with only
+          a Telegram chat do not change.
+
+        Each object is checked on its own, so the step is safe on a new database and when run
+        again. It runs inside the ladder's ``BEGIN IMMEDIATE`` (D-104), and the ladder calls it
+        only on the version change, so the expiry never runs on a later start.
+        """
+        columns = {row[1] for row in cursor.execute("PRAGMA table_info(athlete_accounts)")}
+        if "garmin_profile_id" not in columns:
+            cursor.execute(
+                "ALTER TABLE athlete_accounts ADD COLUMN garmin_profile_id INTEGER "
+                "CHECK (garmin_profile_id > 0)"
+            )
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_athlete_accounts_garmin_profile_id "
+            "ON athlete_accounts (garmin_profile_id) WHERE garmin_profile_id IS NOT NULL"
+        )
+        # FROZEN HISTORICAL SNAPSHOT: column list fixed at v36.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS owner_garmin_profile_history (
+                garmin_profile_id INTEGER NOT NULL,
+                first_recorded_at VARCHAR NOT NULL,
+                CONSTRAINT pk_owner_garmin_profile_history PRIMARY KEY (garmin_profile_id),
+                CONSTRAINT ck_owner_garmin_profile_history_positive CHECK (garmin_profile_id > 0)
+            )
+        """)
+        for sql in OWNER_GARMIN_PROFILE_HISTORY_TRIGGERS.values():
+            cursor.execute(sql.replace("CREATE TRIGGER ", "CREATE TRIGGER IF NOT EXISTS ", 1))
+        cursor.execute(
+            "UPDATE athlete_accounts SET garmin_token_state = 'expired' "
+            "WHERE garmin_user_id IS NOT NULL AND garmin_profile_id IS NULL "
+            "AND garmin_token_state != 'expired'"
+        )

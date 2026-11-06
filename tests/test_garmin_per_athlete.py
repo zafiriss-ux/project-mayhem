@@ -19,6 +19,7 @@ from unittest.mock import MagicMock
 import pytest
 from cryptography.fernet import Fernet
 
+from tests.garmin_accounts import bind, profile_id_for, record_owner, set_token_ok
 from titan.core.athlete import AthleteNotReady
 from titan.core.database import DatabaseManager
 from titan.integrations import garmin_sync
@@ -64,7 +65,7 @@ def key_file(tmp_path, data_dir, monkeypatch):
 @pytest.fixture
 def db(data_dir):
     manager = DatabaseManager(db_dir=data_dir)
-    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
+    record_owner(manager)  # the owner's sync ran once (ADR-0076)
     for athlete in (_A, _B):
         manager.conn.execute(
             "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, 'now')",
@@ -105,7 +106,8 @@ def _fake_garminconnect(monkeypatch, *, reject_token: bool = False, profile_erro
                 raise RuntimeError("401 Unauthorized")
             if profile_error is not None:
                 raise profile_error
-            return {"displayName": _account_of(seen["loaded"][-1])}
+            account = _account_of(seen["loaded"][-1])
+            return {"displayName": account, "profileId": profile_id_for(account)}
 
         def login(self):
             seen["logins"] += 1
@@ -114,6 +116,14 @@ def _fake_garminconnect(monkeypatch, *, reject_token: bool = False, profile_erro
     module.Garmin = _Garmin
     monkeypatch.setitem(sys.modules, "garminconnect", module)
     return seen
+
+
+def _athlete_sync(db, athlete_id: str, account: str) -> GarminSync:  # noqa: ANN001
+    """The GarminSync the worker builds for an athlete bound to ``account`` (ADR-0083 point 5)."""
+    return GarminSync(
+        athlete_id=athlete_id, expected_garmin_user_id=account,
+        expected_garmin_profile_id=profile_id_for(account), db=db,
+    )
 
 
 def _store_token(athlete_id: str, session: str) -> None:
@@ -204,12 +214,12 @@ def test_an_athlete_never_gets_the_owners_credentials(key_file, monkeypatch) -> 
 
 
 @pytest.mark.integration
-def test_an_athlete_connects_with_their_own_stored_token(key_file, monkeypatch) -> None:
+def test_an_athlete_connects_with_their_own_stored_token(key_file, db, monkeypatch) -> None:
     seen = _fake_garminconnect(monkeypatch)
     _store_token(_A, "session-of-a")
     _store_token(_B, "session-of-b")
 
-    sync = GarminSync(athlete_id=_A, expected_garmin_user_id="garmin-a")
+    sync = _athlete_sync(db, _A, "garmin-a")
 
     assert sync.connect() is True
     assert seen["loaded"] == ["session-of-a"]
@@ -219,12 +229,12 @@ def test_an_athlete_connects_with_their_own_stored_token(key_file, monkeypatch) 
 
 
 @pytest.mark.integration
-def test_a_token_of_another_garmin_account_is_never_used(key_file, monkeypatch, caplog) -> None:
+def test_a_token_of_another_garmin_account_is_never_used(key_file, db, monkeypatch, caplog) -> None:
     """MA-F1: A's folder holds a session of B's Garmin account; A is paused, the file is kept."""
     seen = _fake_garminconnect(monkeypatch)
     _store_token(_A, "session-of-b")
 
-    sync = GarminSync(athlete_id=_A, expected_garmin_user_id="garmin-a")
+    sync = _athlete_sync(db, _A, "garmin-a")
 
     with caplog.at_level(logging.INFO, logger=garmin_sync._log.name):
         assert sync.connect() is False
@@ -248,11 +258,11 @@ def test_an_athlete_with_no_bound_garmin_account_never_uses_a_token(key_file, mo
 
 
 @pytest.mark.integration
-def test_a_rate_limited_account_check_keeps_the_token_and_does_not_connect(key_file, monkeypatch) -> None:
+def test_a_rate_limited_account_check_keeps_the_token_and_does_not_connect(key_file, db, monkeypatch) -> None:
     seen = _fake_garminconnect(monkeypatch, profile_error=RuntimeError("429 Too Many Requests"))
     _store_token(_A, "session-of-a")
 
-    sync = GarminSync(athlete_id=_A, expected_garmin_user_id="garmin-a")
+    sync = _athlete_sync(db, _A, "garmin-a")
 
     assert sync.connect() is False
     assert sync.token_expired is False
@@ -264,10 +274,10 @@ def test_a_rate_limited_account_check_keeps_the_token_and_does_not_connect(key_f
 def test_the_worker_passes_the_athletes_bound_account(db, monkeypatch) -> None:
     from titan import worker
 
-    db.bind_garmin_account(_A, "garmin-a")
-    assert worker._bound_garmin_account(db, _A) == "garmin-a"
-    assert worker._bound_garmin_account(db, _B) is None
-    assert worker._bound_garmin_account(db, "owner") is None
+    bind(db, _A, "garmin-a")
+    assert worker._bound_garmin_account(db, _A) == ("garmin-a", profile_id_for("garmin-a"))
+    assert worker._bound_garmin_account(db, _B) == (None, None)
+    assert worker._bound_garmin_account(db, "owner") == (None, None)
 
 
 @pytest.mark.integration
@@ -311,9 +321,9 @@ def test_an_unusable_key_stops_the_connect_and_keeps_the_token(key_file, monkeyp
 
 @pytest.mark.unit
 def test_a_garmin_account_binds_to_one_athlete_only(db) -> None:
-    db.bind_garmin_account(_A, "garmin-1")
+    bind(db, _A, "garmin-1")
     with pytest.raises(ValueError, match="another athlete"):
-        db.bind_garmin_account(_B, "garmin-1")
+        bind(db, _B, "garmin-1")
     assert db.get_athlete_account(_A)["garmin_user_id"] == "garmin-1"
     assert db.get_athlete_account(_B) is None
 
@@ -321,27 +331,34 @@ def test_a_garmin_account_binds_to_one_athlete_only(db) -> None:
 @pytest.mark.unit
 def test_the_owner_garmin_account_is_never_stored(db) -> None:
     with pytest.raises(ValueError, match=".env"):
-        db.bind_garmin_account("owner", "garmin-owner")
+        bind(db, "owner", "garmin-owner")
 
 
 @pytest.mark.unit
 def test_a_new_binding_has_no_usable_token_until_relogin(db) -> None:
-    db.bind_garmin_account(_A, "garmin-1")
+    bind(db, _A, "garmin-1")
     assert db.get_athlete_account(_A)["garmin_token_state"] == "missing"
-    db.set_garmin_token_state(_A, "ok")
-    db.bind_garmin_account(_A, "garmin-1")
-    assert db.get_athlete_account(_A)["garmin_token_state"] == "ok"
-    db.bind_garmin_account(_A, "garmin-2")
+    set_token_ok(db, _A)
+    # ADR-0083 point 4: the same account again is written again and waits for the new token.
+    bind(db, _A, "garmin-1")
+    assert db.get_athlete_account(_A)["garmin_token_state"] == "missing"
+    set_token_ok(db, _A)
+    bind(db, _A, "garmin-2")
     assert db.get_athlete_account(_A)["garmin_token_state"] == "missing"
 
 
 @pytest.mark.unit
 def test_an_unknown_token_state_is_refused(db) -> None:
-    db.bind_garmin_account(_A, "garmin-1")
+    bind(db, _A, "garmin-1")
     with pytest.raises(ValueError):
         db.set_garmin_token_state(_A, "valid")
     with pytest.raises(ValueError, match="no Garmin account"):
-        db.set_garmin_token_state(_B, "ok")
+        db.set_garmin_token_state(_B, "expired")
+    # ADR-0083 point 4: 'ok' only through confirm_garmin_token_ok after a relogin.
+    with pytest.raises(ValueError, match="confirm_garmin_token_ok"):
+        db.set_garmin_token_state(_A, "ok")
+    with pytest.raises(ValueError):
+        db._access.set_garmin_token_state(_A, "ok", updated_at="t")
 
 
 # ── worker ────────────────────────────────────────────────────────────────────
@@ -352,8 +369,8 @@ def test_token_state_ok_without_the_token_file_is_not_ready(db, key_file) -> Non
     from titan import worker
     from titan.core.athlete import AthleteNotReady
 
-    db.bind_garmin_account(_A, "garmin-a")
-    db.set_garmin_token_state(_A, "ok")
+    bind(db, _A, "garmin-a")
+    set_token_ok(db, _A)
     assert not athlete_token_path(_A).exists()
 
     with pytest.raises(AthleteNotReady, match="token file"):
@@ -361,7 +378,7 @@ def test_token_state_ok_without_the_token_file_is_not_ready(db, key_file) -> Non
     assert db.get_athlete_account(_A)["garmin_token_state"] == "expired"  # relogin shows in `list`
 
     _store_token(_A, "session-of-a")  # as `athletes.py relogin` does: token file, then 'ok'
-    db.set_garmin_token_state(_A, "ok")
+    set_token_ok(db, _A)
     worker._require_garmin_ready(db, _A)
 
 
@@ -375,7 +392,7 @@ def test_an_athlete_without_a_usable_garmin_token_builds_nothing(db, key_file, m
     db.grant_consent(_A, "v1")
     db.save_athlete_profile(_A, dict(_PROFILE))
     if state is not None:
-        db.bind_garmin_account(_A, "garmin-1")
+        bind(db, _A, "garmin-1")
         db.set_garmin_token_state(_A, state)
 
     def _forbidden(*_args, **_kwargs):
@@ -393,8 +410,8 @@ def test_an_athlete_without_a_usable_garmin_token_builds_nothing(db, key_file, m
 def test_a_morning_whose_token_was_rejected_pauses_the_athlete(db) -> None:
     from titan import worker
 
-    db.bind_garmin_account(_A, "garmin-1")
-    db.set_garmin_token_state(_A, "ok")
+    bind(db, _A, "garmin-1")
+    set_token_ok(db, _A)
     garmin = MagicMock(token_expired=True)
 
     worker._record_garmin_token_state(db, _A, garmin)
@@ -439,7 +456,7 @@ def test_two_garmin_accounts_each_write_to_their_own_athlete(db, key_file, monke
     }
     for athlete, activities in feeds.items():
         _store_token(athlete, f"session-of-{athlete}")
-        sync = GarminSync(athlete_id=athlete, expected_garmin_user_id=f"garmin-{athlete}")
+        sync = _athlete_sync(db, athlete, f"garmin-{athlete}")
         assert sync.connect() is True
         sync.client = _ActivityClient(activities)
         synced = sync.sync_activities(days_back=3)

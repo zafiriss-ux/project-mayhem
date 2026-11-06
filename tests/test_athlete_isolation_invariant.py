@@ -25,6 +25,9 @@ _SQL_SHAPE_TOKENS: tuple[str, ...] = (" FROM ", " INTO ", " SET ", " VALUES ", "
 _SCHEMA_TABLES_ALLOWED_WITHOUT_ATHLETE_ID: frozenset[str] = frozenset({
     "sync_metadata",
     "login_lockout",  # system-level auth table — not per-athlete (TD-SEC-02)
+    # ADR-0083 point 1: only the owner's profileIds, and by design no athlete_id, so athlete
+    # export and deletion (athlete_tables()) never touch it.
+    "owner_garmin_profile_history",
 })
 
 

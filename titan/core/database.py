@@ -146,7 +146,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 35
+SCHEMA_VERSION = 36
 
 # Largest size the WAL file is kept at after a checkpoint resets it (D-078).
 WAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024
@@ -529,6 +529,10 @@ class DatabaseManager:
         """Version 35: the owner's Garmin account name (ADR-0076, M0-13-R1)."""
         self._migrations._apply_v35_migrations(cursor=cursor)
 
+    def _apply_v36_migrations(self, cursor) -> None:
+        """Version 36: the stable Garmin profileId (ADR-0083, M0-13-R2)."""
+        self._migrations._apply_v36_migrations(cursor=cursor)
+
     def record_failed_login(
         self,
         username: str,
@@ -626,25 +630,66 @@ class DatabaseManager:
         """Return the athlete's external accounts (Garmin, Telegram), or None."""
         return self._access.get_athlete_account(athlete_id=athlete_id)
 
-    def bind_garmin_account(self, athlete_id: str, garmin_user_id: str) -> None:
-        """Bind a Garmin account to an athlete other than the owner (ADR-0067 D9.4).
+    def bind_garmin_account(self, athlete_id: str, garmin_user_id: str, garmin_profile_id: int) -> None:
+        """Bind a Garmin account to an athlete other than the owner (ADR-0067 D9.4, ADR-0083).
 
-        Raises ValueError for the owner, whose Garmin login stays in .env (D1.3), when the
-        account is already bound to another athlete, when it is the owner's account, or
-        while the owner's account name is not recorded yet (ADR-0076 point 5, fail closed).
+        The account is its socialProfile ``displayName`` and its stable ``profileId``.
+        Raises ValueError for the owner, whose Garmin login stays in .env (D1.3), for a
+        missing or invalid profileId, when the account is the owner's (by name or by any
+        profileId ever recorded for the owner), when either value is bound to another athlete,
+        and while the owner's name or profileId is not recorded yet (fail closed).
         """
+        from titan.core.athlete import valid_garmin_profile_id
+
         if athlete_id == OWNER_ATHLETE_ID:
             raise ValueError("the owner's Garmin account lives in .env, not in athlete_accounts")
         if not str(garmin_user_id).strip():
             raise ValueError("a Garmin account id is required")
+        profile_id = valid_garmin_profile_id(garmin_profile_id)
+        if profile_id is None:
+            raise ValueError("Garmin returned no valid profileId for this account; nothing was bound")
         self._access.bind_garmin_account(
             athlete_id=athlete_id, garmin_user_id=str(garmin_user_id).strip(),
-            updated_at=datetime.now(UTC).isoformat(),
+            garmin_profile_id=profile_id, updated_at=datetime.now(UTC).isoformat(),
+        )
+
+    def confirm_garmin_token_ok(self, athlete_id: str, garmin_user_id: str, garmin_profile_id: int) -> bool:
+        """After a relogin wrote the token: 'missing' becomes 'ok' only if nothing changed (ADR-0083 point 4).
+
+        False when the row is no longer 'missing' (for example the owner's connection set it to
+        'expired'), no longer bound to this account, or the account is now the owner's.
+        """
+        return self._access.confirm_garmin_token_ok(
+            athlete_id=athlete_id, garmin_user_id=str(garmin_user_id).strip(),
+            garmin_profile_id=garmin_profile_id, updated_at=datetime.now(UTC).isoformat(),
         )
 
     def get_owner_garmin_display_name(self) -> str | None:
         """The owner's Garmin account name (socialProfile displayName), or None (ADR-0076)."""
         return self._access.get_owner_garmin_display_name()
+
+    def get_owner_garmin_profile_ids(self) -> frozenset[int]:
+        """Every Garmin profileId ever recorded for the owner, or an empty set (ADR-0083)."""
+        return self._access.get_owner_garmin_profile_ids()
+
+    def record_owner_garmin_identity(self, display_name: object, profile_id: object) -> dict:
+        """Store what the owner's connection read from the profile (ADR-0076, ADR-0083 points 2 and 6).
+
+        Each value is written only when valid: a non-empty name (stripped), a profileId that
+        passes ``valid_garmin_profile_id``. An invalid or missing value is not written and never
+        clears the stored one. Athletes bound to the stored values are stopped either way.
+        Returns ``{"changed", "new_account", "expired_athletes", "name_recorded",
+        "profile_id_recorded"}``.
+        """
+        from titan.core.athlete import valid_garmin_profile_id
+
+        name = display_name.strip() if isinstance(display_name, str) else ""
+        valid_name = name or None
+        valid_id = valid_garmin_profile_id(profile_id)
+        result = self._access.record_owner_garmin_identity(
+            display_name=valid_name, profile_id=valid_id, updated_at=datetime.now(UTC).isoformat()
+        )
+        return {**result, "name_recorded": valid_name is not None, "profile_id_recorded": valid_id is not None}
 
     def record_owner_garmin_display_name(self, display_name: str) -> dict | None:
         """Store the owner's current Garmin account name (ADR-0076 points 1, 3 and 6).
@@ -654,15 +699,21 @@ class DatabaseManager:
         a new name replaced the old one, and athletes bound to this account were stopped.
         """
         name = str(display_name or "").strip()
+        # Always through the full record, so the point-6 expiry runs even without a name.
+        result = self.record_owner_garmin_identity(name or None, None)
         if not name:
             return None
-        return self._access.record_owner_garmin_display_name(
-            display_name=name, updated_at=datetime.now(UTC).isoformat()
-        )
+        return {"changed": result["changed"], "expired_athletes": result["expired_athletes"]}
 
     def set_garmin_token_state(self, athlete_id: str, state: str) -> None:
-        """Record the athlete's Garmin token state: 'missing', 'ok' or 'expired' (ADR-0067 D9.5)."""
-        if state not in ("missing", "ok", "expired"):
+        """Record the athlete's Garmin token state: 'missing' or 'expired' (ADR-0067 D9.5).
+
+        'ok' is refused here: only ``confirm_garmin_token_ok`` sets it, after a relogin wrote
+        the token and the account was checked again (ADR-0083 point 4).
+        """
+        if state == "ok":
+            raise ValueError("'ok' is set only by confirm_garmin_token_ok after a relogin")
+        if state not in ("missing", "expired"):
             raise ValueError(f"unknown Garmin token state: {state!r}")
         self._access.set_garmin_token_state(
             athlete_id=athlete_id, state=state, updated_at=datetime.now(UTC).isoformat()

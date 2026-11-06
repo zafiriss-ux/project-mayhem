@@ -19,7 +19,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from titan.core.database import DatabaseManager
+from tests.garmin_accounts import bind, profile_id_for, record_owner, set_token_ok
+from titan.core.database import SCHEMA_VERSION, DatabaseManager
 from titan.integrations import garmin_sync
 from titan.integrations.garmin_sync import GarminSync
 
@@ -107,7 +108,7 @@ def test_a_v34_database_gets_the_table_on_open(data_dir) -> None:
 
     reopened = DatabaseManager(db_dir=data_dir)
     try:
-        assert reopened.conn.execute("PRAGMA user_version").fetchone()[0] == 35
+        assert reopened.conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         assert reopened.get_owner_garmin_display_name() is None
         reopened.record_owner_garmin_display_name(_OWNER_NAME)
         assert reopened.get_owner_garmin_display_name() == _OWNER_NAME
@@ -121,27 +122,27 @@ def test_a_v34_database_gets_the_table_on_open(data_dir) -> None:
 @pytest.mark.unit
 def test_no_account_is_bound_while_the_owner_name_is_unknown(db) -> None:
     with pytest.raises(ValueError, match="owner's Garmin sync first"):
-        db.bind_garmin_account(_A, "garmin-a")
+        bind(db, _A, "garmin-a")
     assert db.get_athlete_account(_A) is None
 
 
 @pytest.mark.unit
 def test_the_owners_account_is_never_bound_to_an_athlete(db) -> None:
-    db.record_owner_garmin_display_name(_OWNER_NAME)
+    record_owner(db, _OWNER_NAME)
 
     with pytest.raises(ValueError, match="owner's Garmin account"):
-        db.bind_garmin_account(_A, f" {_OWNER_NAME} ")
+        bind(db, _A, f" {_OWNER_NAME} ")
     assert db.get_athlete_account(_A) is None
 
-    db.bind_garmin_account(_A, "garmin-a")
+    bind(db, _A, "garmin-a")
     assert db.get_athlete_account(_A)["garmin_user_id"] == "garmin-a"
 
 
 @pytest.mark.unit
 def test_the_comparison_is_exact_like_the_token_check(db) -> None:
     """ADR-0076 point 3: strip and exact equality, as D9.4 and _token_account_matches."""
-    db.record_owner_garmin_display_name(_OWNER_NAME)
-    db.bind_garmin_account(_A, _OWNER_NAME.upper())
+    record_owner(db, _OWNER_NAME)
+    bind(db, _A, _OWNER_NAME.upper())
     assert db.get_athlete_account(_A)["garmin_user_id"] == _OWNER_NAME.upper()
 
 
@@ -150,19 +151,20 @@ def test_the_comparison_is_exact_like_the_token_check(db) -> None:
 
 @pytest.mark.unit
 def test_an_athlete_bound_to_the_owners_account_is_stopped(db) -> None:
-    db.record_owner_garmin_display_name("owner-old-name")
-    db.bind_garmin_account(_A, _OWNER_NAME)
-    db.set_garmin_token_state(_A, "ok")
-    db.bind_garmin_account(_B, "garmin-b")
-    db.set_garmin_token_state(_B, "ok")
+    record_owner(db, "owner-old-name")
+    bind(db, _A, _OWNER_NAME)
+    set_token_ok(db, _A)
+    bind(db, _B, "garmin-b")
+    set_token_ok(db, _B)
 
-    result = db.record_owner_garmin_display_name(_OWNER_NAME)
+    result = record_owner(db, _OWNER_NAME)
 
-    assert result == {"changed": True, "expired_athletes": [_A]}
+    assert (result["changed"], result["expired_athletes"]) == (True, [_A])
     assert db.get_athlete_account(_A)["garmin_token_state"] == "expired"
     assert db.get_athlete_account(_B)["garmin_token_state"] == "ok"
     # Already stopped: not reported again at the next connection.
-    assert db.record_owner_garmin_display_name(_OWNER_NAME) == {"changed": False, "expired_athletes": []}
+    again = record_owner(db, _OWNER_NAME)
+    assert (again["changed"], again["expired_athletes"]) == (False, [])
 
 
 # ── the owner's connection (points 2, 3, 6) ───────────────────────────────────
@@ -248,7 +250,7 @@ def test_a_full_login_reads_the_profile_and_records_the_owner_name(owner_dev, db
 def test_a_profile_without_a_name_records_nothing_and_never_the_email(owner_dev, db, monkeypatch, profile) -> None:
     owner_dev.write_bytes(b"owner-session")
     _fake_garmin(monkeypatch, profile=profile)
-    db.record_owner_garmin_display_name(_OWNER_NAME)
+    record_owner(db, _OWNER_NAME)
 
     assert GarminSync(db=db).connect() is True
 
@@ -288,7 +290,7 @@ def test_a_failed_write_still_connects_the_owner(owner_dev, db, monkeypatch, cap
     owner_dev.write_bytes(b"owner-session")
     _fake_garmin(monkeypatch, profile={"displayName": _OWNER_NAME})
     broken = MagicMock()
-    broken.record_owner_garmin_display_name.side_effect = sqlite3.OperationalError("database is locked")
+    broken.record_owner_garmin_identity.side_effect = sqlite3.OperationalError("database is locked")
     caplog.set_level(logging.INFO)
 
     assert GarminSync(db=broken).connect() is True
@@ -306,9 +308,9 @@ def test_without_a_database_the_owner_still_connects(owner_dev, monkeypatch) -> 
 
 @pytest.mark.integration
 def test_a_changed_name_and_a_stopped_athlete_are_told_without_the_name(owner_dev, db, monkeypatch, caplog) -> None:
-    db.record_owner_garmin_display_name("owner-old-name")
-    db.bind_garmin_account(_A, _OWNER_NAME)
-    db.set_garmin_token_state(_A, "ok")
+    record_owner(db, "owner-old-name")
+    bind(db, _A, _OWNER_NAME)
+    set_token_ok(db, _A)
     owner_dev.write_bytes(b"owner-session")
     _fake_garmin(monkeypatch, profile={"displayName": _OWNER_NAME})
     caplog.set_level(logging.INFO)
@@ -336,12 +338,16 @@ def test_an_athletes_connection_never_records_the_owner_name(data_dir, db, monke
     key.write_bytes(Fernet.generate_key())
     os.chmod(key, 0o600)
     monkeypatch.setenv("TITAN_TOKEN_KEY_FILE", str(key))
-    db.record_owner_garmin_display_name(_OWNER_NAME)
-    db.bind_garmin_account(_A, "garmin-a")
+    record_owner(db, _OWNER_NAME)
+    bind(db, _A, "garmin-a")
     path = athlete_token_path(_A)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(encrypt_athlete_token("session-of-a"))
-    _fake_garmin(monkeypatch, profile={"displayName": "garmin-a"})
+    _fake_garmin(monkeypatch, profile={"displayName": "garmin-a", "profileId": profile_id_for("garmin-a")})
 
-    assert GarminSync(athlete_id=_A, expected_garmin_user_id="garmin-a", db=db).connect() is True
+    sync = GarminSync(
+        athlete_id=_A, expected_garmin_user_id="garmin-a",
+        expected_garmin_profile_id=profile_id_for("garmin-a"), db=db,
+    )
+    assert sync.connect() is True
     assert db.get_owner_garmin_display_name() == _OWNER_NAME

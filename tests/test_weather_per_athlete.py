@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import pytest
 
+from tests.garmin_accounts import bind, record_owner, set_token_ok
 from titan.core.athlete import AthleteNotReady
 from titan.core.database import DatabaseManager
 from titan.integrations import weather_api
@@ -69,15 +70,15 @@ def db(tmp_path, monkeypatch):
 
     get_settings.cache_clear()
     manager = DatabaseManager(db_dir=tmp_path)
-    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
+    record_owner(manager)  # the owner's sync ran once (ADR-0076)
     for index, (athlete, city) in enumerate(((_A, "Thessaloniki"), (_B, "Florina")), start=1):
         manager.conn.execute(
             "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, 'now')",
             (athlete, athlete),
         )
         manager.save_athlete_profile(athlete, _profile(city))
-        manager.bind_garmin_account(athlete, f"garmin-{athlete}")
-        manager.set_garmin_token_state(athlete, "ok")
+        bind(manager, athlete, f"garmin-{athlete}")
+        set_token_ok(manager, athlete)
         from titan.integrations.garmin_sync import (
             athlete_token_path,  # a ready athlete has the token file (MA-F2)
         )

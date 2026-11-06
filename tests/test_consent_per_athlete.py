@@ -15,6 +15,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tests.garmin_accounts import bind, record_owner, set_token_ok
 from titan.core.athlete import (
     CONSENT_FREEZE_DAYS,
     CONSENT_TEXT_VERSION,
@@ -99,7 +100,7 @@ def data_dir(tmp_path, monkeypatch):
 @pytest.fixture
 def db(data_dir):
     manager = DatabaseManager(db_dir=data_dir)
-    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
+    record_owner(manager)  # the owner's sync ran once (ADR-0076)
     for athlete in (_A, _B):
         manager.conn.execute(
             "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, 'now')",
@@ -108,8 +109,8 @@ def db(data_dir):
     manager.conn.commit()
     for athlete, chat in ((_A, CHAT_A), (_B, CHAT_B)):
         manager.save_athlete_profile(athlete, _PROFILE)
-        manager.bind_garmin_account(athlete, f"garmin-{athlete}")
-        manager.set_garmin_token_state(athlete, "ok")
+        bind(manager, athlete, f"garmin-{athlete}")
+        set_token_ok(manager, athlete)
         from titan.integrations.garmin_sync import (
             athlete_token_path,  # a ready athlete has the token file (MA-F2)
         )

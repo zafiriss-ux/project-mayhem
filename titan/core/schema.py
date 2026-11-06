@@ -556,8 +556,15 @@ t_athlete_accounts = Table(
     Column("garmin_token_state", String, nullable=False),
     Column("telegram_chat_id", String, unique=True),
     Column("updated_at", String, nullable=False),
+    # v36 — ADR-0083: the stable Garmin profileId of the bound account, unique when present.
+    Column("garmin_profile_id", Integer),
     CheckConstraint(
         "garmin_token_state IN ('missing', 'ok', 'expired')", name="garmin_token_state"
+    ),
+    CheckConstraint("garmin_profile_id > 0", name="garmin_profile_id"),
+    Index(
+        "uq_athlete_accounts_garmin_profile_id", "garmin_profile_id", unique=True,
+        sqlite_where=text("garmin_profile_id IS NOT NULL"),
     ),
 )
 
@@ -595,6 +602,22 @@ t_owner_garmin_identity = Table(
     Column("updated_at", String, nullable=False),
     CheckConstraint("athlete_id = 'owner'", name="owner"),
     CheckConstraint("length(trim(garmin_display_name)) > 0", name="name"),
+)
+
+# ---------------------------------------------------------------------------
+# Table 30 — owner_garmin_profile_history
+# Covers: _apply_v36_migrations() (ADR-0083, M0-13-R2)
+# Every Garmin profileId ever recorded for the owner. No athlete_id column, so athlete
+# export and deletion never touch it. Triggers (v36 step only; not expressible here) stop
+# every DELETE and UPDATE.
+# NOTE: ladder-created (v36); NOT in _BASE_TABLE_NAMES.
+# ---------------------------------------------------------------------------
+t_owner_garmin_profile_history = Table(
+    "owner_garmin_profile_history",
+    metadata,
+    Column("garmin_profile_id", Integer, primary_key=True, autoincrement=False),
+    Column("first_recorded_at", String, nullable=False),
+    CheckConstraint("garmin_profile_id > 0", name="positive"),
 )
 
 # ---------------------------------------------------------------------------

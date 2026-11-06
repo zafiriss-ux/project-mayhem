@@ -23,6 +23,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from tests.garmin_accounts import bind, record_owner, set_token_ok
 from titan.core import athlete_lifecycle as lifecycle
 from titan.core.athlete import canonical_chat_id
 from titan.core.database import DatabaseManager
@@ -54,7 +55,7 @@ def db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("TITAN_DATA_DIR", str(data))
     _settings(monkeypatch)
     manager = DatabaseManager(db_dir=data)
-    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
+    record_owner(manager)  # the owner's sync ran once (ADR-0076)
     yield manager
     manager.close()
     get_settings.cache_clear()
@@ -145,8 +146,8 @@ def test_a_legacy_chat_is_not_run_and_named_in_the_readiness(db, monkeypatch, le
 
     monkeypatch.setattr(worker, "_utc_now", lambda: _NOW)
     _add(db, _A, "1002", monkeypatch)
-    db.bind_garmin_account(_A, "garmin-a")
-    db.set_garmin_token_state(_A, "ok")
+    bind(db, _A, "garmin-a")
+    set_token_ok(db, _A)
     from titan.integrations.garmin_sync import (
         athlete_token_path,  # a ready athlete has the token file (MA-F2)
     )
@@ -345,7 +346,7 @@ def test_a_worker_morning_sends_each_athlete_only_to_its_own_chat(tmp_path, monk
     evening = datetime.combine(pilot.FIRST_MORNING, datetime.min.time(), UTC) - timedelta(hours=6)
     with freeze_time(evening):
         db = DatabaseManager(db_dir=data)
-        db.record_owner_garmin_display_name(pilot.OWNER.garmin_account)  # the owner's sync ran once (ADR-0076)
+        db.record_owner_garmin_identity(pilot.OWNER.garmin_account, pilot.profile_id(pilot.OWNER))  # the owner's sync ran once
         for i, athlete in enumerate((ATHLETE_A, ATHLETE_B)):
             monkeypatch.setattr(lifecycle, "new_athlete_id", lambda a=athlete: a.athlete_id)
             lifecycle.add_athlete(db, athlete.key, pilot.athlete_profile_record(athlete), athlete.chat,
