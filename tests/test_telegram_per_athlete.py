@@ -17,6 +17,7 @@ from unittest.mock import MagicMock
 import pytest
 from cryptography.fernet import Fernet
 
+from tests.garmin_accounts import bind, profile_id_for, record_owner, set_token_ok
 from titan.core.athlete import AthleteNotReady
 from titan.core.database import DatabaseManager
 from titan.integrations.garmin_sync import GarminSync, athlete_token_path, encrypt_athlete_token
@@ -322,9 +323,9 @@ def _ready(db: DatabaseManager, athlete_id: str) -> None:
     _grant_consent(db, athlete_id)
     db.save_athlete_profile(athlete_id, _PROFILE)
     if db.get_owner_garmin_display_name() is None:
-        db.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
-    db.bind_garmin_account(athlete_id, f"garmin-{athlete_id}")
-    db.set_garmin_token_state(athlete_id, "ok")
+        record_owner(db)  # the owner's sync ran once (ADR-0076)
+    bind(db, athlete_id, f"garmin-{athlete_id}")
+    set_token_ok(db, athlete_id)
     from titan.integrations.garmin_sync import (
         athlete_token_path,  # a ready athlete has the token file (MA-F2)
     )
@@ -655,7 +656,8 @@ def _fake_garminconnect(monkeypatch) -> dict:
 
         def connectapi(self, _path):
             # The token "session-of-a" belongs to the Garmin account bound to athlete A (MA-F1).
-            return {"displayName": f"garmin-{_A}" if self.client.token == "session-of-a" else "garmin-other"}
+            account = f"garmin-{_A}" if self.client.token == "session-of-a" else "garmin-other"
+            return {"displayName": account, "profileId": profile_id_for(account)}
 
         def login(self):
             seen["logins"] += 1

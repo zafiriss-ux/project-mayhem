@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## M0-13-R2 / #1268 — the Garmin account is also its stable profileId (ADR-0083 implementation, owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1268; this entry is only the brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete isolation / authorization. **Severity:** HIGH (issue; authorization path, floor HIGH). **Change Type:** implementation. **Workflow Path:** B (category Β, ADR-0083 Accepted, D-223). Only tightens: every new check refuses, nothing that is refused today is accepted.
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path B
+Execution unit: #1268 only, exactly ADR-0083 points 1–7. Schema v36 (`athlete_accounts.garmin_profile_id` with CHECK and partial unique index; `owner_garmin_profile_history` with no-delete/no-update triggers; athletes bound without a profileId set to 'expired' on the version change). One shared validator (`valid_garmin_profile_id`). The owner's connection writes name and profileId independently in one `BEGIN IMMEDIATE` transaction with the point-6 expiry on the stored values. Relogin and `bind_garmin_account` refuse the owner's account by name or by any recorded profileId and stay closed while either is unknown; the bind and the final conditional 'ok' are `BEGIN IMMEDIATE` transactions; a refused 'ok' removes the token just written. `_token_account_matches` accepts a token only when both values are valid, equal to the bound ones and not the owner's; no database, an empty or unreadable owner record → refused. Both worker places pass `db=` and the profileId; a row without a profileId is unbound. No new module.
+Deliverable: the change, the ADR's test list (tests/test_owner_garmin_profile_id.py, the schema-equivalence comparison of indexes, CHECKs and triggers between a fresh and a v35→v36 database, the runbook SQL block test), existing fixtures updated to bind with a profileId, runbook `multi-athlete.md` (§0 note, §4 logs, §6 manual step), full canonical gates, independent code review plus the extra security review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1268 closes after merge and green main; M0-13-R2 then RESOLVED in the table below and in docs/audits/FINDINGS.md.
+Canonical doc update: this brief, the M0-13-R2 row, the ING-NEW-01 closure line, CLAUDE.md schema line and test snapshot, docs/governance/ledger.jsonl.
+Authorizes: ADR-0083 (Accepted 2026-11-06, D-223) and the owner's instruction of 2026-11-06 to implement it in a separate PR after the ADR (#1434 plan v3, order 1). Merge: the owner's standing merge authorization of 2026-11-05 with its four conditions, including the extra security review for HIGH.
+Allowed / Forbidden: `titan/core/athlete.py`, `titan/core/database.py`, `titan/core/repositories/access.py`, `titan/core/repositories/migrations.py`, `titan/core/schema.py`, `titan/integrations/garmin_sync.py`, `titan/worker/__init__.py`, `docs/runbooks/multi-athlete.md`, tests, the records above. No AGENTS.md or ADR text change, no H1–H5 or owner-morning change, no change to the owner's `.env` reading.
+
+---
+
 ## ING-NEW-01 / #1347 — the lap import writes cardiac drift only to the owner's row of its own activity (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1347; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete isolation / data integrity. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0040 (athlete isolation) and ADR-0067 (multi-athlete).
+**Status:** RESOLVED 2026-11-06 — PR #1498, squash `a6a43a1`; main green; issue #1347 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete isolation / data integrity. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0040 (athlete isolation) and ADR-0067 (multi-athlete).
 
 Pass type: implementation
 Change Type: implementation

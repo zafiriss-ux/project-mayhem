@@ -17,6 +17,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from tests.garmin_accounts import bind, record_owner, set_token_ok
 from titan import worker
 from titan.core.athlete import CONSENT_TEXT_VERSION
 from titan.core.database import DatabaseManager
@@ -67,7 +68,7 @@ def db(tmp_path, monkeypatch):
     monkeypatch.setattr(worker, "_utc_now", lambda: _MORNING)
     _Bot.sent = []
     manager = DatabaseManager(db_dir=data)
-    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
+    record_owner(manager)  # the owner's sync ran once (ADR-0076)
     # Registered in this order: B before A, C last, so the order is not the id order.
     for athlete, created in ((_B, "2026-10-01"), (_A, "2026-10-02"), (_C, "2026-10-03")):
         manager.conn.execute(
@@ -77,8 +78,8 @@ def db(tmp_path, monkeypatch):
     manager.conn.commit()
     for athlete, chat in ((_A, 2000), (_B, 3000), (_C, 4000)):
         manager.save_athlete_profile(athlete, _PROFILE)
-        manager.bind_garmin_account(athlete, f"garmin-{athlete}")
-        manager.set_garmin_token_state(athlete, "ok")
+        bind(manager, athlete, f"garmin-{athlete}")
+        set_token_ok(manager, athlete)
         from titan.integrations.garmin_sync import (
             athlete_token_path,  # a ready athlete has the token file (MA-F2)
         )

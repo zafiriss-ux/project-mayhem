@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from tests.garmin_accounts import bind, record_owner, set_token_ok
 from titan.core.database import DatabaseManager
 from titan.orchestration.daily_coach import DailyCoach
 
@@ -19,7 +20,7 @@ def worker_db(tmp_path, monkeypatch):
     monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
     manager = DatabaseManager(db_dir=tmp_path)
-    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
+    record_owner(manager)  # the owner's sync ran once (ADR-0076)
     return manager
 
 
@@ -52,8 +53,8 @@ def test_build_daily_coach_scopes_engines_to_athlete(worker_db):
         "location_city": "Thessaloniki", "location_country": "GR",
     })
     # Since step 4 the athlete also needs their own Garmin account and token (ADR-0067 D9).
-    worker_db.bind_garmin_account("a-00000002", "garmin-b")
-    worker_db.set_garmin_token_state("a-00000002", "ok")
+    bind(worker_db, "a-00000002", "garmin-b")
+    set_token_ok(worker_db, "a-00000002")
     from titan.integrations.garmin_sync import (
         athlete_token_path,  # a ready athlete has the token file (MA-F2)
     )

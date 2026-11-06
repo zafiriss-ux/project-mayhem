@@ -97,6 +97,24 @@ def canonical_chat_id(value: object, *, allow_negative: bool = False) -> str | N
     return ("-" if negative else "") + str(int(digits))
 
 
+_MAX_GARMIN_PROFILE_ID = 2**63  # exclusive: the largest value an SQLite INTEGER holds is 2**63 - 1
+
+
+def valid_garmin_profile_id(value: object) -> int | None:
+    """The Garmin socialProfile ``profileId`` when it is usable, else None (ADR-0083 point 1).
+
+    The one check used by the relogin, the owner's record, the binding and the token check.
+    Only a plain ``int`` with ``0 < value < 2**63``: never a bool, float, string, zero, a
+    negative number or a value SQLite cannot hold. Two None values never match: compare only
+    after both sides passed this check.
+    """
+    if type(value) is not int:
+        return None
+    if not 0 < value < _MAX_GARMIN_PROFILE_ID:
+        return None
+    return value
+
+
 def age_on(birth_date: date, today: date) -> int:
     """Whole years from birth_date to today."""
     return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))

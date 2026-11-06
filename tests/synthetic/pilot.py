@@ -58,6 +58,11 @@ ATHLETES = (OWNER, ATHLETE_A, ATHLETE_B)
 _BY_ACCOUNT = {a.garmin_account: a for a in ATHLETES}
 
 
+def profile_id(athlete: PilotAthlete) -> int:
+    """The synthetic Garmin profileId of the athlete's account (ADR-0083)."""
+    return 700_000_001 + ATHLETES.index(athlete)
+
+
 def mornings() -> list[date]:
     return [FIRST_MORNING + timedelta(days=i) for i in range(DAYS)]
 
@@ -134,8 +139,9 @@ class _FakeGarmin:
     def connectapi(self, _path: str) -> dict:
         if self.display_name not in _BY_ACCOUNT:
             raise RuntimeError("unknown Garmin account")
-        # The account check after a token connect reads the display name (MA-F1).
-        return {"displayName": self.display_name}
+        # The account check after a token connect reads the display name and the profileId
+        # (MA-F1, ADR-0083).
+        return {"displayName": self.display_name, "profileId": profile_id(_BY_ACCOUNT[self.display_name])}
 
     def get_user_summary(self, _iso: str) -> dict:
         return {}

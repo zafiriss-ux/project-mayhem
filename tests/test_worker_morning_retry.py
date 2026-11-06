@@ -22,6 +22,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.garmin_accounts import bind, record_owner, set_token_ok
 from titan import worker
 from titan.core.athlete import CONSENT_TEXT_VERSION
 from titan.core.database import DatabaseManager
@@ -147,13 +148,13 @@ def db(tmp_path, monkeypatch):
     _Coach.runs, _Coach.session, _Coach.delivers, _Coach.raises = [], dict(_TEMPO), False, False
     _Coach.hrv, _Coach.clock_during_run = 62.0, None
     manager = DatabaseManager(db_dir=data)
-    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
+    record_owner(manager)  # the owner's sync ran once (ADR-0076)
     manager.conn.execute("INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, ?)",
                          (_A, _A, "2026-10-01"))
     manager.conn.commit()
     manager.save_athlete_profile(_A, _PROFILE)
-    manager.bind_garmin_account(_A, f"garmin-{_A}")
-    manager.set_garmin_token_state(_A, "ok")
+    bind(manager, _A, f"garmin-{_A}")
+    set_token_ok(manager, _A)
     from titan.integrations.garmin_sync import (
         athlete_token_path,  # a ready athlete has the token file (MA-F2)
     )

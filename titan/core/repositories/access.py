@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sqlite3
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -26,6 +27,10 @@ if TYPE_CHECKING:
 
 # Coach id of the seed assignment written by the migrations (system -> owner); never an API user.
 SEED_COACH_ID = "system"
+
+
+class OpenTransactionError(RuntimeError):
+    """A write that must be its own BEGIN IMMEDIATE found a transaction already open (ADR-0083)."""
 
 
 class AccessRepository:
@@ -263,7 +268,7 @@ class AccessRepository:
         with self._db._lock:
             self._db._ensure_open_locked()
             row = self._db.conn.cursor().execute(
-                "SELECT garmin_user_id, garmin_token_state, telegram_chat_id, updated_at "
+                "SELECT garmin_user_id, garmin_token_state, telegram_chat_id, updated_at, garmin_profile_id "
                 "FROM athlete_accounts WHERE athlete_id = ?",
                 (athlete_id,),
             ).fetchone()
@@ -274,46 +279,129 @@ class AccessRepository:
             "garmin_token_state": row[1],
             "telegram_chat_id": row[2],
             "updated_at": row[3],
+            "garmin_profile_id": row[4],
         }
 
-    def bind_garmin_account(self, athlete_id: str, garmin_user_id: str, *, updated_at: str) -> None:
-        """Bind a Garmin account to the athlete; refuse one already bound elsewhere (ADR-0067 D9.4).
+    @contextmanager
+    def _immediate_transaction(self) -> Iterator[Any]:
+        """One ``BEGIN IMMEDIATE`` transaction; the caller holds ``self._db._lock`` (ADR-0083).
 
-        A new or changed binding has no usable token yet ('missing') until a relogin.
-        The check and the write run under one lock, and the UNIQUE column backs it.
+        The thread lock alone is not enough: the API, the worker and the CLI are separate
+        processes, and ``IMMEDIATE`` takes the database write lock before the first read.
+        A transaction already open on the connection is refused, never joined or committed.
+        Commit when the block ends, rollback on any error.
         """
+        conn = self._db.conn
+        if conn.in_transaction:
+            raise OpenTransactionError("a transaction is already open on the database connection")
+        cursor = conn.cursor()
+        cursor.execute("BEGIN IMMEDIATE")
+        try:
+            yield cursor
+            conn.commit()
+        except BaseException:
+            conn.rollback()
+            raise
+
+    @staticmethod
+    def _owner_garmin_identity(cursor) -> tuple[str | None, frozenset[int]]:  # noqa: ANN001
+        """The owner's stored Garmin account name and every recorded profileId, in this transaction."""
+        row = cursor.execute(
+            "SELECT garmin_display_name FROM owner_garmin_identity WHERE athlete_id = 'owner'"
+        ).fetchone()
+        history = frozenset(
+            r[0] for r in cursor.execute("SELECT garmin_profile_id FROM owner_garmin_profile_history")
+        )
+        return (row[0] if row else None), history
+
+    def bind_garmin_account(
+        self, athlete_id: str, garmin_user_id: str, garmin_profile_id: int, *, updated_at: str
+    ) -> None:
+        """Bind a Garmin account to the athlete; refuse the owner's or one bound elsewhere.
+
+        ADR-0067 D9.4, ADR-0076 point 5 and ADR-0083 point 4. Refused while the owner's
+        account name or profileId is not recorded (fail closed), when the name is the owner's
+        or the profileId is in the owner's history, and when the name or the profileId is
+        bound to another athlete. A binding of the same athlete writes both columns again.
+        The row has no usable token ('missing') until the relogin writes one. The checks and
+        the write are one ``BEGIN IMMEDIATE`` transaction; a database error is a refusal
+        with a message that shows no value and no other athlete.
+        """
+        from titan.core.athlete import valid_garmin_profile_id
+
+        profile_id = valid_garmin_profile_id(garmin_profile_id)
+        if profile_id is None:
+            raise ValueError("Garmin returned no valid profileId for this account; nothing was bound")
         with self._db._lock:
             self._db._ensure_open_locked()
-            cursor = self._db.conn.cursor()
-            # ADR-0076 point 5: the owner's account is never bound to an athlete, and while
-            # the owner's account name is unknown no account is bound at all (fail closed).
-            owner = cursor.execute(
-                "SELECT garmin_display_name FROM owner_garmin_identity WHERE athlete_id = 'owner'"
-            ).fetchone()
-            if owner is None:
-                raise ValueError(
-                    "the owner's Garmin account name is not recorded yet; run the owner's Garmin sync first"
+            try:
+                with self._immediate_transaction() as cursor:
+                    owner_name, owner_history = self._owner_garmin_identity(cursor)
+                    if owner_name is None or not owner_history:
+                        raise ValueError(
+                            "the owner's Garmin account is not recorded yet; run the owner's Garmin sync first"
+                        )
+                    if owner_name == garmin_user_id or profile_id in owner_history:
+                        raise ValueError(
+                            "this is the owner's Garmin account; an athlete binds their own account"
+                        )
+                    holders = {
+                        row[0]
+                        for row in cursor.execute(
+                            "SELECT athlete_id FROM athlete_accounts "
+                            "WHERE garmin_user_id = ? OR garmin_profile_id = ?",
+                            (garmin_user_id, profile_id),
+                        )
+                    }
+                    if holders - {athlete_id}:
+                        raise ValueError("this Garmin account is already bound to another athlete")
+                    cursor.execute(
+                        """INSERT INTO athlete_accounts
+                               (athlete_id, garmin_user_id, garmin_profile_id, garmin_token_state, updated_at)
+                           VALUES (?, ?, ?, 'missing', ?)
+                           ON CONFLICT(athlete_id) DO UPDATE SET
+                                garmin_user_id = excluded.garmin_user_id,
+                                garmin_profile_id = excluded.garmin_profile_id,
+                                garmin_token_state = 'missing',
+                                updated_at = excluded.updated_at""",
+                        (athlete_id, garmin_user_id, profile_id, updated_at),
+                    )
+            except (sqlite3.IntegrityError, sqlite3.OperationalError) as exc:
+                raise ValueError("the Garmin account could not be bound; nothing was changed") from exc
+
+    def confirm_garmin_token_ok(
+        self, athlete_id: str, garmin_user_id: str, garmin_profile_id: int, *, updated_at: str
+    ) -> bool:
+        """Set 'ok' after a relogin wrote the token, only if nothing changed since the binding.
+
+        ADR-0083 point 4: one ``BEGIN IMMEDIATE`` transaction checks the owner's account again
+        and sets 'ok' only on the row still in 'missing' and still bound to this account. An
+        'expired' set in between (point 6) never becomes 'ok'. Returns False otherwise, and
+        nothing is written.
+        """
+        from titan.core.athlete import valid_garmin_profile_id
+
+        profile_id = valid_garmin_profile_id(garmin_profile_id)
+        if profile_id is None:
+            return False
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            with self._immediate_transaction() as cursor:
+                owner_name, owner_history = self._owner_garmin_identity(cursor)
+                if (
+                    owner_name is None
+                    or not owner_history
+                    or owner_name == garmin_user_id
+                    or profile_id in owner_history
+                ):
+                    return False
+                cursor.execute(
+                    "UPDATE athlete_accounts SET garmin_token_state = 'ok', updated_at = ? "
+                    "WHERE athlete_id = ? AND garmin_token_state = 'missing' "
+                    "AND garmin_user_id = ? AND garmin_profile_id = ?",
+                    (updated_at, athlete_id, garmin_user_id, profile_id),
                 )
-            if owner[0] == garmin_user_id:
-                raise ValueError("this is the owner's Garmin account; an athlete binds their own account")
-            holder = cursor.execute(
-                "SELECT athlete_id FROM athlete_accounts WHERE garmin_user_id = ?",
-                (garmin_user_id,),
-            ).fetchone()
-            if holder is not None and holder[0] != athlete_id:
-                raise ValueError("this Garmin account is already bound to another athlete")
-            if holder is not None:
-                return
-            cursor.execute(
-                """INSERT INTO athlete_accounts (athlete_id, garmin_user_id, garmin_token_state, updated_at)
-                   VALUES (?, ?, 'missing', ?)
-                   ON CONFLICT(athlete_id) DO UPDATE SET
-                        garmin_user_id = excluded.garmin_user_id,
-                        garmin_token_state = 'missing',
-                        updated_at = excluded.updated_at""",
-                (athlete_id, garmin_user_id, updated_at),
-            )
-            self._db.conn.commit()
+                return cursor.rowcount == 1
 
     def get_owner_garmin_display_name(self) -> str | None:
         """The owner's Garmin account name (socialProfile displayName), or None (ADR-0076)."""
@@ -324,54 +412,95 @@ class AccessRepository:
             ).fetchone()
         return row[0] if row else None
 
-    def record_owner_garmin_display_name(self, display_name: str, *, updated_at: str) -> dict:
-        """Store the owner's current Garmin account name and stop athletes bound to it (ADR-0076).
+    def get_owner_garmin_profile_ids(self) -> frozenset[int]:
+        """Every Garmin profileId ever recorded for the owner (ADR-0083); empty when none."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            rows = self._db.conn.execute(
+                "SELECT garmin_profile_id FROM owner_garmin_profile_history"
+            ).fetchall()
+        return frozenset(row[0] for row in rows)
 
-        One current value: a new name replaces the old one (point 3). An athlete bound to
-        that account gets token state 'expired' (point 6), the only write to another
-        athlete's state from the owner's flow, and only towards closed. All in one
-        transaction. Returns ``{"changed": bool, "expired_athletes": [athlete_id, ...]}``.
+    def record_owner_garmin_identity(
+        self, display_name: str | None, profile_id: int | None, *, updated_at: str
+    ) -> dict:
+        """Store what the owner's connection read and stop athletes bound to the owner.
+
+        ADR-0076 points 1, 3, 6 and ADR-0083 points 2 and 6, in one ``BEGIN IMMEDIATE``
+        transaction. Each value is written on its own and only when given (the caller passes
+        only valid values): the name replaces the old one; the profileId is added to the
+        history, never replacing one, and its presence is checked before the commit. Then
+        every athlete bound to the stored values (the whole history, and the stored name) gets
+        'expired', even when nothing new was written. Not the owner, not rows already
+        'expired'. Returns ``{"changed", "new_account", "expired_athletes"}``: the name
+        changed; a profileId was added to a history that was not empty; who was stopped.
         """
         with self._db._lock:
             self._db._ensure_open_locked()
-            cursor = self._db.conn.cursor()
-            try:
-                previous = cursor.execute(
-                    "SELECT garmin_display_name FROM owner_garmin_identity WHERE athlete_id = 'owner'"
-                ).fetchone()
-                cursor.execute(
-                    """INSERT INTO owner_garmin_identity (athlete_id, garmin_display_name, updated_at)
-                       VALUES ('owner', ?, ?)
-                       ON CONFLICT(athlete_id) DO UPDATE SET
-                            garmin_display_name = excluded.garmin_display_name,
-                            updated_at = excluded.updated_at""",
-                    (display_name, updated_at),
-                )
-                bound = [
-                    row[0]
-                    for row in cursor.execute(
-                        "SELECT athlete_id FROM athlete_accounts WHERE garmin_user_id = ? "
-                        "AND athlete_id != 'owner' AND garmin_token_state != 'expired' ORDER BY athlete_id",
-                        (display_name,),
+            with self._immediate_transaction() as cursor:
+                previous_name, previous_history = self._owner_garmin_identity(cursor)
+                if display_name is not None:
+                    cursor.execute(
+                        """INSERT INTO owner_garmin_identity (athlete_id, garmin_display_name, updated_at)
+                           VALUES ('owner', ?, ?)
+                           ON CONFLICT(athlete_id) DO UPDATE SET
+                                garmin_display_name = excluded.garmin_display_name,
+                                updated_at = excluded.updated_at""",
+                        (display_name, updated_at),
                     )
-                ]
-                for athlete_id in bound:
+                if profile_id is not None:
+                    # Only the duplicate is ignored; any other violation stops the whole write.
+                    cursor.execute(
+                        "INSERT INTO owner_garmin_profile_history (garmin_profile_id, first_recorded_at) "
+                        "VALUES (?, ?) ON CONFLICT(garmin_profile_id) DO NOTHING",
+                        (profile_id, updated_at),
+                    )
+                    if cursor.execute(
+                        "SELECT 1 FROM owner_garmin_profile_history WHERE garmin_profile_id = ?",
+                        (profile_id,),
+                    ).fetchone() is None:
+                        raise RuntimeError("the owner's Garmin profileId was not recorded")
+                stored_name, stored_history = self._owner_garmin_identity(cursor)
+                bound: set[str] = set()
+                if stored_history:
+                    bound.update(
+                        row[0]
+                        for row in cursor.execute(
+                            "SELECT athlete_id FROM athlete_accounts WHERE garmin_profile_id IN "
+                            "(SELECT garmin_profile_id FROM owner_garmin_profile_history) "
+                            "AND athlete_id != 'owner' AND garmin_token_state != 'expired'"
+                        )
+                    )
+                if stored_name is not None:
+                    bound.update(
+                        row[0]
+                        for row in cursor.execute(
+                            "SELECT athlete_id FROM athlete_accounts WHERE garmin_user_id = ? "
+                            "AND athlete_id != 'owner' AND garmin_token_state != 'expired'",
+                            (stored_name,),
+                        )
+                    )
+                expired = sorted(bound)
+                for athlete_id in expired:
                     cursor.execute(
                         "UPDATE athlete_accounts SET garmin_token_state = 'expired', updated_at = ? "
                         "WHERE athlete_id = ?",
                         (updated_at, athlete_id),
                     )
-                self._db.conn.commit()
-            except Exception:
-                self._db.conn.rollback()
-                raise
         return {
-            "changed": previous is not None and previous[0] != display_name,
-            "expired_athletes": bound,
+            "changed": (
+                display_name is not None and previous_name is not None and previous_name != display_name
+            ),
+            "new_account": (
+                profile_id is not None and bool(previous_history) and profile_id not in previous_history
+            ),
+            "expired_athletes": expired,
         }
 
     def set_garmin_token_state(self, athlete_id: str, state: str, *, updated_at: str) -> None:
-        """Record the athlete's Garmin token state ('missing', 'ok' or 'expired')."""
+        """Record the athlete's Garmin token state ('missing' or 'expired'; 'ok' only via confirm)."""
+        if state not in ("missing", "expired"):
+            raise ValueError(f"not a Garmin token state this setter writes: {state!r}")
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()

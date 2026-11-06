@@ -92,6 +92,7 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "garmin_token_state",
         "telegram_chat_id",
         "updated_at",
+        "garmin_profile_id",  # v36 — ADR-0083 (M0-13-R2)
     ],
     "athlete_profiles": [  # v30 — ADR-0067 D5 (D-091)
         "athlete_id",
@@ -245,6 +246,10 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "athlete_id",
         "garmin_display_name",
         "updated_at",
+    ],
+    "owner_garmin_profile_history": [  # v36 — ADR-0083 (M0-13-R2)
+        "garmin_profile_id",
+        "first_recorded_at",
     ],
     "override_log": [
         "id",
@@ -554,3 +559,68 @@ def test_fresh_db_column_set_matches_authoritative(
         f"{table}: unexpected columns in fresh DB "
         f"(new column added without fixture update): {sorted(unexpected)}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test 3 — indexes, CHECK constraints and triggers (ADR-0083)
+#
+# schema.py cannot express triggers, and the column tests above do not see indexes or
+# CHECKs. A fresh database and a database upgraded from v35 must hold the same objects in
+# sqlite_master, with the same SQL (CHECKs are in the table SQL).
+# ---------------------------------------------------------------------------
+
+
+def _schema_objects(path: Path) -> dict[tuple[str, str], str]:
+    conn = sqlite3.connect(str(path))
+    try:
+        return {
+            (kind, name): sql
+            for kind, name, sql in conn.execute(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'"
+            )
+        }
+    finally:
+        conn.close()
+
+
+def _build_v35_database(db_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A database written by the v35 ladder: the v36 step does not run and user_version is 35."""
+    import titan.core.database as database_module
+    from titan.core.repositories.migrations import SchemaMigrations
+
+    with monkeypatch.context() as patch:
+        patch.setattr(database_module, "SCHEMA_VERSION", 35)
+        patch.setattr(SchemaMigrations, "_apply_v36_migrations", lambda self, cursor: None)
+        DatabaseManager("v35.db", db_dir=db_dir).close()
+
+
+def test_a_v35_database_upgraded_to_v36_has_the_same_objects_as_a_fresh_one(tmp_path, monkeypatch) -> None:
+    fresh_dir, old_dir = tmp_path / "fresh", tmp_path / "old"
+    fresh_dir.mkdir()
+    old_dir.mkdir()
+    DatabaseManager("fresh.db", db_dir=fresh_dir).close()
+    _build_v35_database(old_dir, monkeypatch)
+    v35 = _schema_objects(old_dir / "v35.db")
+    assert ("table", "owner_garmin_profile_history") not in v35  # really the v35 shape
+
+    DatabaseManager("v35.db", db_dir=old_dir).close()
+
+    fresh, upgraded = _schema_objects(fresh_dir / "fresh.db"), _schema_objects(old_dir / "v35.db")
+    assert upgraded == fresh
+    for key in (
+        ("index", "uq_athlete_accounts_garmin_profile_id"),
+        ("trigger", "trg_owner_garmin_profile_history_no_delete"),
+        ("trigger", "trg_owner_garmin_profile_history_no_update"),
+    ):
+        assert key in fresh, key
+    assert "CHECK (garmin_profile_id > 0)" in fresh[("table", "athlete_accounts")]
+    assert "CHECK (garmin_profile_id > 0)" in fresh[("table", "owner_garmin_profile_history")]
+
+
+def test_the_triggers_are_the_ones_defined_once(tmp_path) -> None:
+    from titan.core.repositories.migrations import OWNER_GARMIN_PROFILE_HISTORY_TRIGGERS
+
+    DatabaseManager("fresh.db", db_dir=tmp_path).close()
+    objects = _schema_objects(tmp_path / "fresh.db")
+    for name, sql in OWNER_GARMIN_PROFILE_HISTORY_TRIGGERS.items():
+        assert objects[("trigger", name)] == sql

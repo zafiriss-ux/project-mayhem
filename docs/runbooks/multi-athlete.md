@@ -43,6 +43,12 @@ export GARMIN_EMAIL=you@example.com                          # το δικό σ�
 γράψει `run the owner's Garmin sync first`, αυτό λείπει. Με `this is the owner's Garmin account` ο
 αθλητής μπήκε με τον δικό σου λογαριασμό, ακόμα και με άλλο e-mail: δεν δένεται τίποτα.
 
+Από το σχήμα v36 (ADR-0083) η βάση κρατά και τον μόνιμο αριθμό προφίλ (`profileId`) του λογαριασμού σου,
+μαζί με κάθε παλιό. Το sync σου μετά την αναβάθμιση τον γράφει μόνο του. Ο αριθμός δεν εμφανίζεται
+ποτέ σε log ή στην έξοδο του `list`/`relogin`. Αν το `relogin` γράψει `no valid profileId`, το Garmin
+δεν έδωσε αριθμό προφίλ για τον λογαριασμό του αθλητή: δεν δένεται τίποτα. Αθλητές που είχαν δεθεί
+πριν από το v36 εμφανίζονται `garmin=expired` και θέλουν ένα `relogin` (§4).
+
 Ο πρωινός κύκλος τρέχει τους άλλους αθλητές μόνο με `TITAN_MULTI_ATHLETE=1` (στο Docker, στο `.env`).
 Χωρίς αυτό τρέχει μόνο ο owner.
 
@@ -261,6 +267,19 @@ python scripts/athletes.py list            # garmin=ok  ready=yes
 ποιος είναι ο δικός του λογαριασμός Garmin, και κάνε `relogin` μαζί του με αυτόν. Το
 `owner_garmin_account_name_changed` λέει ότι άλλαξε το όνομα του δικού σου λογαριασμού: αν δεν το
 άλλαξες εσύ, έλεγξε ότι το `.env` δείχνει στον δικό σου λογαριασμό.
+Το `owner_garmin_profile_id_added` λέει ότι η σύνδεσή σου απάντησε για άλλον αριθμό προφίλ από
+όσους ξέρει η βάση: έλεγξε ότι το `.env` δείχνει στον δικό σου λογαριασμό. Ο νέος αριθμός μπαίνει
+στο ιστορικό σου, και ο παλιός μένει (§6).
+
+Αν τα logs γράφουν `connect_token_owner_check_unavailable` για έναν αθλητή, το token του δεν
+χρησιμοποιήθηκε γιατί η βάση δεν έδωσε τα στοιχεία του δικού σου λογαριασμού (κλειδωμένη βάση, ή το
+ιστορικό αριθμών προφίλ σου είναι άδειο). Ο αθλητής δεν συγχρονίζεται, αλλά το `list` δείχνει ακόμα
+`garmin=ok` και δεν χρειάζεται `relogin`. Αν επαναλαμβάνεται σε κάθε κύκλο, τρέξε το δικό σου sync και
+έλεγξε ότι το Garmin δίνει αριθμό προφίλ (§6).
+
+Αν το `relogin` γράψει `the athlete's Garmin binding changed while the token was written`, η σύνδεσή
+σου έτρεξε την ίδια στιγμή και βρήκε ότι ο λογαριασμός είναι δικός σου. Το token σβήστηκε και ο
+αθλητής μένει σε παύση. Δες πρώτα αν ο αθλητής μπήκε με τον δικό σου λογαριασμό.
 
 **Αν το `list` λέει `garmin=ok` αλλά τα logs γράφουν `connect_token_key_unusable` ή
 `connect_token_key_mismatch`:** το πρόβλημα είναι
@@ -292,3 +311,47 @@ worker το αδειάζει σε κάθε κύκλο. Σου έρχεται μ�
   (`pending_audit_torn_tail_dropped`). Ήταν `/stop` που δεν επιβεβαιώθηκε ποτέ στον αθλητή.
 - Το αρχείο δεν έχει chat id, token ή δεδομένα υγείας. Το `pending_audit.lock` είναι το αρχείο
   κλειδώματος: μην το σβήνεις όσο τρέχει ο worker.
+
+---
+
+## 6. Ιστορικό αριθμών προφίλ Garmin του owner (ADR-0083)
+
+Ο πίνακας `owner_garmin_profile_history` κρατά κάθε αριθμό προφίλ (`profileId`) που έχει δώσει ποτέ η
+σύνδεσή σου στο Garmin. Κάθε αριθμός εκεί αρνείται για πάντα το δέσιμο σε αθλητή. Ο κώδικας δεν σβήνει
+ποτέ γραμμή του, και δύο triggers σταματούν κάθε διαγραφή ή αλλαγή.
+
+**Πότε χρειάζεται διαγραφή:** μόνο αν το `.env` είχε δείξει κατά λάθος στον λογαριασμό ενός αθλητή, οπότε
+ο αριθμός εκείνου μπήκε στο ιστορικό σου και ο αθλητής δεν δένεται πια. Η διαγραφή χαλαρώνει έλεγχο:
+**πρώτα γράφεις την απόφασή σου στο `DECISIONS.md`**. Χωρίς αυτήν, η άρνηση μένει.
+
+Βήματα, με τον worker σταματημένο και αφού πάρεις backup της βάσης:
+
+1. Βρες τον αριθμό προφίλ του αθλητή τοπικά (π.χ. από το `athletes export` του). Μην τον γράφεις σε
+   αναφορά ή issue.
+2. Άνοιξε τη βάση με `sqlite3 titan_core.db` και δώσε πρώτα `.bail on` (σταματά στο πρώτο σφάλμα, ώστε
+   ένα σφάλμα στη μέση να μη φτάσει ποτέ στο `COMMIT`) και μετά `.parameter set :profile_id <αριθμός>`.
+3. Τρέξε ολόκληρο το μπλοκ. Βγάζει τα triggers, σβήνει μόνο αυτή τη γραμμή και ξαναβάζει τα triggers
+   στην ίδια συναλλαγή:
+
+```sql
+BEGIN IMMEDIATE;
+DROP TRIGGER IF EXISTS trg_owner_garmin_profile_history_no_delete;
+DROP TRIGGER IF EXISTS trg_owner_garmin_profile_history_no_update;
+DELETE FROM owner_garmin_profile_history WHERE garmin_profile_id = :profile_id;
+CREATE TRIGGER trg_owner_garmin_profile_history_no_delete
+BEFORE DELETE ON owner_garmin_profile_history
+BEGIN
+    SELECT RAISE(ABORT, 'owner_garmin_profile_history rows are never deleted (ADR-0083)');
+END;
+CREATE TRIGGER trg_owner_garmin_profile_history_no_update
+BEFORE UPDATE ON owner_garmin_profile_history
+BEGIN
+    SELECT RAISE(ABORT, 'owner_garmin_profile_history rows are never changed (ADR-0083)');
+END;
+COMMIT;
+```
+
+4. Έλεγξε ότι τα triggers υπάρχουν ξανά:
+   `SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'owner_garmin_profile_history';`
+   (δύο γραμμές). Αν δεν βγουν δύο, **μην ξεκινήσεις τον worker**: τρέξε ξανά μόνο τις δύο εντολές
+   `CREATE TRIGGER` του μπλοκ και έλεγξε πάλι. Μετά ξεκίνα τον worker και κάνε `relogin` στον αθλητή.

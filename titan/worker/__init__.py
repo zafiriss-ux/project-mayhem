@@ -956,7 +956,8 @@ def _require_garmin_ready(db: DatabaseManager, athlete_id: str) -> None:
     if athlete_id == OWNER_ATHLETE_ID:
         return
     account = db.get_athlete_account(athlete_id)
-    if account is None or not account.get("garmin_user_id"):
+    # A row bound before v36 has no profileId: unbound until relogin (ADR-0083 point 5).
+    if account is None or not account.get("garmin_user_id") or account.get("garmin_profile_id") is None:
         raise AthleteNotReady(athlete_id, "garmin: no account bound")
     if account["garmin_token_state"] != "ok":
         raise AthleteNotReady(athlete_id, f"garmin: token {account['garmin_token_state']}")
@@ -1033,7 +1034,12 @@ def sync_athlete_on_request(db: DatabaseManager, athlete_id: str) -> str:
     except AthleteNotReady as exc:
         log.info("athlete_sync_not_ready", extra={"athlete_id": athlete_id, "reason": exc.reason})
         return "⏸ Your setup is not complete yet, so nothing was synced."
-    garmin = GarminSync(athlete_id=athlete_id, expected_garmin_user_id=_bound_garmin_account(db, athlete_id))
+    bound_user_id, bound_profile_id = _bound_garmin_account(db, athlete_id)
+    # db: the token check reads the owner's account from it; without it every token is refused.
+    garmin = GarminSync(
+        athlete_id=athlete_id, expected_garmin_user_id=bound_user_id,
+        expected_garmin_profile_id=bound_profile_id, db=db,
+    )
     # The athlete's max HR sets the TRIMP zones, as in the morning (DailyCoach). Without it
     # every activity was stored with load 0 and overwrote the load stored before (M0-03).
     garmin.athlete_max_hr = int(profile.max_hr or 0)
@@ -1066,13 +1072,17 @@ def sync_athlete_on_request(db: DatabaseManager, athlete_id: str) -> str:
     return "✅ Sync complete."
 
 
-def _bound_garmin_account(db: DatabaseManager, athlete_id: str) -> str | None:
-    """The Garmin account bound to the athlete, or None (the owner's lives in .env)."""
+def _bound_garmin_account(db: DatabaseManager, athlete_id: str) -> tuple[str | None, int | None]:
+    """The Garmin account bound to the athlete: (displayName, profileId), each None when absent.
+
+    The owner's account lives in .env, so the owner gets (None, None) (ADR-0067 D1.3).
+    """
     from titan.core.athlete import OWNER_ATHLETE_ID
 
     if athlete_id == OWNER_ATHLETE_ID:
-        return None
-    return (db.get_athlete_account(athlete_id) or {}).get("garmin_user_id")
+        return None, None
+    account = db.get_athlete_account(athlete_id) or {}
+    return account.get("garmin_user_id"), account.get("garmin_profile_id")
 
 
 def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
@@ -1108,9 +1118,11 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
         else WeatherAPI(location=f"{profile.location_city},{profile.location_country}", athlete_id=athlete_id)
     )
     engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
+    bound_user_id, bound_profile_id = _bound_garmin_account(db, athlete_id)
     return DailyCoach(
         garmin_sync=GarminSync(
-            athlete_id=athlete_id, expected_garmin_user_id=_bound_garmin_account(db, athlete_id), db=db
+            athlete_id=athlete_id, expected_garmin_user_id=bound_user_id,
+            expected_garmin_profile_id=bound_profile_id, db=db,
         ),
         weather_api=weather,
         # Another athlete's messages go to their own chat only, never the owner's (ADR-0067 D10.1).
