@@ -362,8 +362,10 @@ class PersistenceAdapter(ABC):
     # ------------------------------------------------------------------ #
 
     @abstractmethod
-    def save_governance_decision(self, decision: dict[str, Any]) -> None:
-        """Persist a governance decision snapshot."""
+    def save_governance_decision(
+        self, decision: dict[str, Any], *, fence: tuple[str, int] | None = None,
+    ) -> bool:
+        """Persist a governance decision snapshot; False when ``fence`` refused it (#1248)."""
 
     @abstractmethod
     def update_governance_outcome(
@@ -624,8 +626,10 @@ class SQLiteAdapter(PersistenceAdapter):
     def get_override_log(self, limit: int = 50, athlete_id: str = "owner") -> list[dict[str, str]]:
         return self._manager.get_override_log(limit=limit, athlete_id=athlete_id)
 
-    def save_governance_decision(self, decision: dict[str, Any]) -> None:
-        self._manager.save_governance_decision(decision=decision)
+    def save_governance_decision(
+        self, decision: dict[str, Any], *, fence: tuple[str, int] | None = None,
+    ) -> bool:
+        return self._manager.save_governance_decision(decision=decision, fence=fence)
 
     def update_governance_outcome(
         self,
@@ -1186,7 +1190,12 @@ class PostgreSQLAdapter(PersistenceAdapter):
             for row in rows
         ]
 
-    def save_governance_decision(self, decision: dict[str, Any]) -> None:
+    def save_governance_decision(
+        self, decision: dict[str, Any], *, fence: tuple[str, int] | None = None,
+    ) -> bool:
+        if fence is not None:
+            # The worker's attempt fence (#1248) needs its routine table, which only SQLite has.
+            raise NotImplementedError("fenced decision writes need the SQLite worker tables")
         with self._engine.begin() as conn:
             conn.execute(
                 insert(self._governance_outcomes).values(
@@ -1212,6 +1221,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
                     athlete_id=decision_athlete_id(decision),
                 )
             )
+        return True
 
     def update_governance_outcome(
         self,

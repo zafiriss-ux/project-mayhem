@@ -428,9 +428,14 @@ class OperationsRepository:
         return data if isinstance(data, dict) else {}
 
     def update_routine_resume(
-        self, *, athlete_id: str, execution_date: str, routine_type: str, fields: dict[str, Any]
+        self, *, athlete_id: str, execution_date: str, routine_type: str, fields: dict[str, Any],
+        attempt: int | None = None,
     ) -> None:
-        """Merge ``fields`` into the day's ``resume_json`` (D-109); the claimed row must exist."""
+        """Merge ``fields`` into the day's ``resume_json`` (D-109); the claimed row must exist.
+
+        With ``attempt`` the write happens only while that attempt still owns the open day
+        (#1248, M0-01); otherwise nothing is written and LookupError is raised.
+        """
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
@@ -449,11 +454,22 @@ class OperationsRepository:
             if not isinstance(data, dict):
                 data = {}
             data.update(fields)
-            cursor.execute(
-                "UPDATE worker_routine_executions SET resume_json = ? "
-                "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
-                (json.dumps(data, sort_keys=True, default=str), *key),
-            )
+            fence, fence_args = "", ()
+            if attempt is not None:
+                fence = " AND attempts = ? AND delivered_at IS NULL AND completed_at IS NULL"
+                fence_args = (int(attempt),)
+            try:
+                cursor.execute(
+                    "UPDATE worker_routine_executions SET resume_json = ? "
+                    "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?" + fence,
+                    (json.dumps(data, sort_keys=True, default=str), *key, *fence_args),
+                )
+            except BaseException:
+                self._db.conn.rollback()  # no stale snapshot stays open on the shared connection
+                raise
+            if cursor.rowcount == 0:
+                self._db.conn.rollback()
+                raise LookupError(f"attempt {attempt} no longer owns {key}")
             self._db.conn.commit()
 
     def routine_inputs_fingerprint(self, athlete_id: str, date: str) -> str | None:

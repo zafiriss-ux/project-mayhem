@@ -91,7 +91,7 @@ from titan.science.data_trust import (
 from titan.science.glycogen_model import GlycogenDebtAccumulator
 from titan.science.governance_engine import GovernanceEngine
 from titan.science.intensity_governor import IntensityGovernor
-from titan.science.outcome_tracker import OutcomeTracker
+from titan.science.outcome_tracker import DecisionNotRecorded, OutcomeTracker
 from titan.science.tsb_engine import LOAD_HISTORY_DAYS
 from titan.science.volume_load_gauge import VolumeLoadGauge
 
@@ -296,6 +296,16 @@ def _briefing_hook(hook: "Callable[..., None] | None", *args: object) -> None:
         hook(*args)
     except Exception as exc:
         _daily_coach_event("briefing_hook_failed", error_class=type(exc).__name__, error_message=str(exc))
+
+
+def _decision_fence(coach: object) -> dict:
+    """``{"fence": (routine_type, attempt)}`` of the worker attempt, or {} outside the worker (#1248).
+
+    The decision is then written only while that attempt still owns the open day, checked
+    in the writing statement itself (M0-01).
+    """
+    fence = getattr(coach, "decision_fence", None)
+    return {} if fence is None else {"fence": fence}
 
 
 def _attempt_owns_day(coach: object) -> bool:
@@ -2041,24 +2051,32 @@ class DailyCoach:
                 _daily_coach_event("decision_not_recorded", reason="attempt_superseded")
                 return
             trace = result.decision_trace
-            outcome_tracker.record_decision(
-                date=_routine_day(self).isoformat(),
-                replace_same_day=bool(getattr(self, "replace_decision", False)),
-                session_planned=str(trace.get("session_planned_pre_governance", "EASY")),
-                session_post_governance=str(trace.get("session_post_governance", "EASY")),
-                locks_applied=list(trace.get("locks_applied", [])),
-                governance_clean=bool(trace.get("governance_clean", True)),
-                phase=str(trace.get("phase", "BASE")),
-                vlg_color=str(trace.get("vlg_color", "GREEN")),
-                apl_result=dict(trace.get("apl_result", {})),
-                # Unknown ACWR or TSB stays unknown (NULL), not 0.0 (OW-M2, ADR-0069 §4α).
-                acwr=_safe_float(trace.get("acwr"), None),
-                tsb_value=_safe_float(trace.get("tsb_value", trace.get("tsb")), None),
-                readiness_score=float(trace.get("readiness_score", 50.0)),
-                glycogen_debt=float(trace.get("glycogen_debt", 0.0)),
-                afi_value=float(trace.get("afi_value", 0.0)),
-                athlete_profile_id=athlete_profile_id,
-            )
+            try:
+                outcome_tracker.record_decision(
+                    date=_routine_day(self).isoformat(),
+                    replace_same_day=bool(getattr(self, "replace_decision", False)),
+                    session_planned=str(trace.get("session_planned_pre_governance", "EASY")),
+                    session_post_governance=str(trace.get("session_post_governance", "EASY")),
+                    locks_applied=list(trace.get("locks_applied", [])),
+                    governance_clean=bool(trace.get("governance_clean", True)),
+                    phase=str(trace.get("phase", "BASE")),
+                    vlg_color=str(trace.get("vlg_color", "GREEN")),
+                    apl_result=dict(trace.get("apl_result", {})),
+                    # Unknown ACWR or TSB stays unknown (NULL), not 0.0 (OW-M2, ADR-0069 §4α).
+                    acwr=_safe_float(trace.get("acwr"), None),
+                    tsb_value=_safe_float(trace.get("tsb_value", trace.get("tsb")), None),
+                    readiness_score=float(trace.get("readiness_score", 50.0)),
+                    glycogen_debt=float(trace.get("glycogen_debt", 0.0)),
+                    afi_value=float(trace.get("afi_value", 0.0)),
+                    athlete_profile_id=athlete_profile_id,
+                    **_decision_fence(self),
+                )
+            except DecisionNotRecorded:
+                # A later attempt took the day over between the check above and the write
+                # (#1248): its decision stays, and this attempt records and sends nothing.
+                self.attempt_lost = True
+                _daily_coach_event("decision_not_recorded", reason="attempt_superseded_at_write")
+                return
             recorded = getattr(self, "on_decision_recorded", None)
             if recorded is not None:
                 recorded(dict(result.session_plan))

@@ -40,6 +40,10 @@ MODULE_VERSION = "1.0.0"
 _log = logging.getLogger(__name__)
 
 
+class DecisionNotRecorded(Exception):
+    """The fenced write of a decision was refused: the worker attempt no longer owns the day (#1248)."""
+
+
 _LOCK_TO_HEURISTIC_PARAMETERS: dict[str, list[str]] = {
     "READINESS_2OF4_DOWNGRADE": ["SUBJECTIVE_FATIGUE_2OF4"],
     "HARD_STOP_SAFETY_GATES": ["HARD_STOP_TSB_FLOOR"],
@@ -236,6 +240,7 @@ class OutcomeTracker:
         afi_value: float | None = None,
         date: str | None = None,
         replace_same_day: bool = False,
+        fence: tuple[str, int] | None = None,
     ) -> GovernanceDecision:
         """
         Record a governance decision immediately after apply_constraints().
@@ -245,6 +250,10 @@ class OutcomeTracker:
 
         ``replace_same_day``: a morning retry that computed the day again supersedes the
         stored decision of that date in place instead of adding a second row (D-109).
+
+        ``fence``: ``(routine_type, attempt)`` of the worker attempt recording it. The row is
+        written only while that attempt still owns the open day; otherwise nothing is written
+        or kept and DecisionNotRecorded is raised (#1248, M0-01).
         """
         cause = _classify_lock_cause(
             locks_applied=locks_applied,
@@ -270,17 +279,23 @@ class OutcomeTracker:
             afi_value=float(afi_value) if afi_value is not None else None,
             algorithm_version_snapshot=_algorithm_version_snapshot(),
         )
+        fenced = {} if fence is None else {"fence": fence}
+        if fence is not None and self._db is None:
+            raise DecisionNotRecorded("a fenced decision needs a database")
         replaced = False
+        if replace_same_day:
+            replace = getattr(self._db, "replace_governance_decision_on", None)
+            replaced = bool(replace(asdict(decision), **fenced)) if replace is not None else False
+        if self._db is not None and not replaced:
+            saved = self._db.save_governance_decision(asdict(decision), **fenced)
+            if fence is not None and saved is not True:
+                raise DecisionNotRecorded(f"attempt {fence[1]} no longer owns {decision.date}")
         if replace_same_day:
             self._decisions = [
                 d for d in self._decisions
                 if not (d.date == decision.date and d.athlete_profile_id == decision.athlete_profile_id)
             ]
-            replace = getattr(self._db, "replace_governance_decision_on", None)
-            replaced = bool(replace(asdict(decision))) if replace is not None else False
         self._decisions.append(decision)
-        if self._db is not None and not replaced:
-            self._db.save_governance_decision(asdict(decision))
 
         _log.info(
             json.dumps(

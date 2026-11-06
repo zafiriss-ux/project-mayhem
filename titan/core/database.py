@@ -1056,11 +1056,13 @@ class DatabaseManager:
         )
 
     def update_routine_resume(
-        self, *, athlete_id: str, execution_date: str, routine_type: str, fields: dict[str, Any]
+        self, *, athlete_id: str, execution_date: str, routine_type: str, fields: dict[str, Any],
+        attempt: int | None = None,
     ) -> None:
-        """Merge ``fields`` into that day's ``resume_json`` (D-109)."""
+        """Merge ``fields`` into that day's ``resume_json`` (D-109); ``attempt`` fences it (#1248)."""
         self._operations.update_routine_resume(
             athlete_id=athlete_id, execution_date=execution_date, routine_type=routine_type, fields=fields,
+            attempt=attempt,
         )
 
     def routine_inputs_fingerprint(self, athlete_id: str, date: str) -> str | None:
@@ -1437,9 +1439,11 @@ class DatabaseManager:
 
     # --- GOVERNANCE OUTCOMES (titan/core/repositories/governance.py) ---
 
-    def save_governance_decision(self, decision: dict[str, Any]) -> None:
-        """Persist a governance decision snapshot into governance_outcomes."""
-        self._governance.save_governance_decision(decision=decision)
+    def save_governance_decision(
+        self, decision: dict[str, Any], *, fence: tuple[str, int] | None = None,
+    ) -> bool:
+        """Persist a governance decision snapshot; False when ``fence`` refused it (#1248)."""
+        return self._governance.save_governance_decision(decision=decision, fence=fence)
 
     def update_governance_outcome(
         self,
@@ -1473,9 +1477,11 @@ class DatabaseManager:
         """The athlete's stored decision of that date, or None (ADR-0067 D8.4)."""
         return self._governance.get_governance_decision_on(athlete_id=athlete_id, date=date)
 
-    def replace_governance_decision_on(self, decision: dict[str, Any]) -> bool:
-        """Supersede the athlete's stored decision of that date in place; False if none (D-109)."""
-        return self._governance.replace_governance_decision_on(decision=decision)
+    def replace_governance_decision_on(
+        self, decision: dict[str, Any], *, fence: tuple[str, int] | None = None,
+    ) -> bool:
+        """Supersede the stored decision of that date in place; False if none or fenced (D-109, #1248)."""
+        return self._governance.replace_governance_decision_on(decision=decision, fence=fence)
 
     def annotate_governance_outcome(self, date: str, note: str, athlete_id: str = "owner") -> bool:
         """Attach or replace the operator note on one athlete's latest decision of *date* (ISO-3)."""
