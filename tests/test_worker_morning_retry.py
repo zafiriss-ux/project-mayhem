@@ -108,8 +108,8 @@ class _Coach:
             return False
         # As DailyCoach's send step: mark "sending", send, clear the mark if Telegram refused (MA-F5).
         before = getattr(self, "before_briefing_send", None)
-        if before is not None:
-            before()
+        if before is not None and before() is False:  # a later attempt owns the day (#1264)
+            return False
         ok = self.telegram.send_daily_coaching({"session": cls.session["session_type"]})
         after = getattr(self, "after_briefing_send", None)
         if after is not None:
@@ -647,10 +647,6 @@ def test_1264_control_the_database_refuses_the_superseded_attempts_sending_mark(
     assert "sending" not in db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning")
 
 
-@pytest.mark.xfail(
-    strict=True, raises=AssertionError,
-    reason="M0-01-R1 (#1264): the refused fenced 'sending' mark is swallowed and the briefing is still sent",
-)
 def test_1264_a_takeover_after_the_send_check_does_not_send_the_old_briefing(db) -> None:
     coach = _takeover_after_the_send_check(db)
 
@@ -659,6 +655,94 @@ def test_1264_a_takeover_after_the_send_check_does_not_send_the_old_briefing(db)
     assert _stored(db) == ["REST"]  # attempt 2's REST is the day's decision, marked delivered
     assert _to_athlete() == []  # attempt 1 must not send TEMPO after it
     assert sent is False
+    assert coach.attempt_lost is True
+    resume = db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning")
+    assert "sending" not in resume and resume["session"] == {"session_type": "REST"}
+
+
+def test_1264_the_attempt_that_owns_the_day_marks_and_sends(db) -> None:
+    coach = _stale_coach(db, lambda: None)
+    coach._make_record_outcome_handler()(None, _result("TEMPO"))
+    marks: list[object] = []
+    real_mark = coach.before_briefing_send
+
+    def _mark() -> object:
+        marks.append(db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning").get("sending"))
+        result = real_mark()
+        marks.append(db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning").get("sending"))
+        return result
+
+    coach.before_briefing_send = _mark
+    assert coach._make_send_telegram_handler()(None, _result("TEMPO")) is True
+    assert _to_athlete() == ["BRIEFING TEMPO"]
+    assert marks[0] is None and marks[1] is not None  # marked before the send
+    assert coach.attempt_lost is False
+
+
+def test_1264_the_refused_mark_is_told_apart_from_a_missing_row(db) -> None:
+    from titan.core.repositories.operations import RoutineAttemptSuperseded
+
+    with pytest.raises(LookupError) as missing:  # no routine row at all
+        db.update_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                                 fields={"sending": "x"}, attempt=1)
+    assert not isinstance(missing.value, RoutineAttemptSuperseded)
+    db.begin_routine_attempt(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                             started_at=_MORNING, max_attempts=3)
+    with pytest.raises(RoutineAttemptSuperseded):
+        db.update_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                                 fields={"sending": "x"}, attempt=2)
+
+
+def test_1264_mark_briefing_sending_stops_the_send_only_when_superseded(db, monkeypatch) -> None:
+    db.begin_routine_attempt(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                             started_at=_MORNING, max_attempts=3)
+    assert worker._mark_briefing_sending(db, _A, _TODAY, 1) is True  # owns the day
+    assert db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning").get("sending")
+    assert worker._mark_briefing_sending(db, _A, _TODAY, 2) is False  # not its attempt: refused
+    assert worker._mark_briefing_sending(db, "nobody", _TODAY, 1) is True  # no routine row: MA-F5
+
+    def _locked(**_kwargs) -> None:
+        raise sqlite3.OperationalError("database is locked")
+
+    monkeypatch.setattr(db, "update_routine_resume", _locked)
+    # Any other failure keeps MA-F5 (owner decision of 2026-11-07): the send goes ahead.
+    assert worker._mark_briefing_sending(db, _A, _TODAY, 1) is True
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("before", [False, None, "raises"], ids=["refused", "no answer", "hook failed"])
+def test_1264_daily_coach_sends_unless_the_mark_is_refused(before) -> None:
+    from titan.orchestration.daily_coach import DailyCoach
+
+    calls: list[object] = []
+
+    class _Telegram:
+        def send_daily_coaching(self, payload) -> bool:
+            calls.append("send")
+            return True
+
+    class _Result:
+        coaching_payload: dict = {}
+
+    def _before() -> object:
+        calls.append("before")
+        if before == "raises":
+            raise RuntimeError("database is locked")
+        return before
+
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.telegram = _Telegram()
+    coach.routine_date = _TODAY
+    coach.before_briefing_send = _before
+    coach.after_briefing_send = lambda ok: calls.append(("after", ok))
+
+    sent = coach._make_send_telegram_handler()(None, _Result())
+
+    if before is False:
+        assert sent is False and calls == ["before"]
+        assert coach.attempt_lost is True
+    else:
+        assert sent is True and calls == ["before", "send", ("after", True)]
 
 
 def test_1248_a_failed_fenced_write_leaves_no_transaction_open(db) -> None:

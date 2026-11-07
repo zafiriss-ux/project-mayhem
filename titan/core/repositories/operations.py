@@ -32,6 +32,14 @@ def _attempt_mark_holds(
     restarted = bool(running_by) and running_by != runner and running_by.split(":", 1)[0] == runner.split(":", 1)[0]
     return not restarted
 
+class RoutineAttemptSuperseded(LookupError):
+    """A fenced routine write was refused: the attempt no longer owns the open day (M0-01-R1, #1264).
+
+    A LookupError, as before, so callers that caught that still do; the class tells the
+    refusal apart from a missing routine row.
+    """
+
+
 class OperationsRepository:
     """Operations SQL, on the owning DatabaseManager's connection and lock."""
 
@@ -450,7 +458,8 @@ class OperationsRepository:
         """Merge ``fields`` into the day's ``resume_json`` (D-109); the claimed row must exist.
 
         With ``attempt`` the write happens only while that attempt still owns the open day
-        (#1248, M0-01); otherwise nothing is written and LookupError is raised.
+        (#1248, M0-01); otherwise nothing is written and ``RoutineAttemptSuperseded`` (a
+        LookupError) is raised. A missing row raises a plain LookupError.
         """
         with self._db._lock:
             self._db._ensure_open_locked()
@@ -484,7 +493,7 @@ class OperationsRepository:
                 raise
             if cursor.rowcount == 0:
                 self._db.conn.rollback()
-                raise LookupError(f"attempt {attempt} no longer owns {key}")
+                raise RoutineAttemptSuperseded(f"attempt {attempt} no longer owns {key}")
             self._db.conn.commit()
 
     def routine_inputs_fingerprint(self, athlete_id: str, date: str) -> str | None:

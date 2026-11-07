@@ -288,14 +288,19 @@ class DegradedModeTracker:
         return result
 
 
-def _briefing_hook(hook: "Callable[..., None] | None", *args: object) -> None:
-    """Call a worker hook around the briefing's send; its failure never stops the send (MA-F5)."""
+def _briefing_hook(hook: "Callable[..., object] | None", *args: object) -> object:
+    """Call a worker hook around the briefing's send and return its result; None when it failed.
+
+    Its failure never stops the send (MA-F5). Only the hook itself can stop it, by
+    returning False (M0-01-R1, #1264).
+    """
     if hook is None:
-        return
+        return None
     try:
-        hook(*args)
+        return hook(*args)
     except Exception as exc:
         _daily_coach_event("briefing_hook_failed", error_class=type(exc).__name__, error_message=str(exc))
+        return None
 
 
 def _decision_fence(coach: object) -> dict:
@@ -759,7 +764,7 @@ class DailyCoach:
         # Asked before the athlete is sent "TITAN system error"; False skips it (D-109).
         self.before_system_error_alert: Callable[[], bool] | None = None
         # MA-F5 (ADR-0069 §8): the worker marks "sending" and clears the mark on a refused send.
-        self.before_briefing_send: Callable[[], None] | None = None
+        self.before_briefing_send: Callable[[], object] | None = None
         # Set by the worker: False once its attempt no longer owns the day (M0-01).
         self.attempt_is_current: Callable[[], bool] | None = None
         self.attempt_lost = False
@@ -2126,7 +2131,12 @@ class DailyCoach:
                 # Another attempt owns the day (M0-01): it sends, this one does not.
                 _daily_coach_event("briefing_not_sent", reason="attempt_superseded")
                 return False
-            _briefing_hook(getattr(self, "before_briefing_send", None))
+            if _briefing_hook(getattr(self, "before_briefing_send", None)) is False:
+                # The database refused this attempt's "sending" mark: a later attempt took the
+                # day over after the check above (M0-01-R1, #1264). It sends; this one does not.
+                self.attempt_lost = True
+                _daily_coach_event("briefing_not_sent", reason="attempt_superseded_at_mark")
+                return False
             try:
                 delivery_ok = telegram.send_daily_coaching(payload)
             except Exception as exc:
