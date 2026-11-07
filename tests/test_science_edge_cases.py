@@ -169,3 +169,87 @@ def test_a_downgrade_without_its_own_modifier_reduces_volume(intensity_gate, tsb
 
     assert result.get("volume_modifier") == (None if expected_modifier is None else pytest.approx(expected_modifier))
     assert result.get("max_duration_min") == expected_cap
+
+
+# ── XA-T01 (#1166): the later ceilings downgrade the type but keep the volume ───
+
+_XA_T01 = "XA-T01 (#1166): the ceilings after the ADR-0065 volume cap change only the session type and zone"
+
+
+def _override_ratio_db(ratio: float):
+    from unittest.mock import MagicMock
+
+    db = MagicMock()
+    db.get_override_ratio.return_value = ratio
+    return db
+
+
+# (session, context overrides, lock code). LONG_RUN 180' is the audited scenario; the override
+# lockdown disables only quality sessions, so it is shown on a TEMPO.
+_LATE_CEILINGS = [
+    pytest.param("LONG_RUN", 180, {"persistence_degraded": True}, "PERSISTENCE_DEGRADED_CEILING", id="persistence-degraded"),
+    pytest.param("LONG_RUN", 180, {"data_confidence_low": True}, "STARTUP_DATA_CONFIDENCE_CEILING", id="startup-data-confidence"),
+    pytest.param(
+        "LONG_RUN", 180,
+        {"afi_constraints": {"afi_modifier": 0, "readiness_clamp": 100,
+                             "parasympathetic_guard": {"triggered": True, "reason": "synthetic"}}},
+        "PARASYMPATHETIC_GUARD", id="parasympathetic-guard",
+    ),
+    pytest.param(
+        "TEMPO", 75, {"override_ratio": 0.9, "athlete_id": "synthetic-athlete"},
+        "OVERRIDE_LOCKDOWN", id="override-lockdown",
+    ),
+]
+
+
+# A GREEN intensity gate as IntensityGovernor returns it: full volume (modifier 1.0).
+_GREEN_GATE = {"color": "GREEN", "max_zone": 5, "volume_modifier": 1.0}
+
+
+def _late_ceiling_result(session_type: str, minutes: int, overrides: dict) -> dict:
+    overrides = dict(overrides)
+    if "override_ratio" in overrides:  # a fresh database stub for each test
+        overrides["db"] = _override_ratio_db(overrides.pop("override_ratio"))
+    context = _healthy_context(planned_duration_min=minutes, intensity_gate_result=_GREEN_GATE, **overrides)
+    return GovernanceEngine().apply_constraints(
+        _quality_session(session_type=session_type, duration_min=minutes), context,
+    )
+
+
+@pytest.mark.parametrize(("session_type", "minutes"), [("LONG_RUN", 180), ("TEMPO", 75)])
+def test_1166_control_without_a_ceiling_the_session_keeps_its_type_and_volume(session_type, minutes):
+    result = _late_ceiling_result(session_type, minutes, {})
+
+    assert result["session_type"] == session_type
+    assert result["volume_modifier"] == pytest.approx(1.0)
+    assert result.get("max_duration_min") is None
+
+
+def test_1166_control_a_downgrade_the_cap_covers_reduces_the_same_long_run():
+    """The same LONG_RUN 180' on an H4 day (ADR-0065): the reduction the xfail below looks for."""
+    result = _late_ceiling_result("LONG_RUN", 180, {"tsb_value": -60.0})
+
+    assert result["session_type"] == "EASY"
+    assert result["volume_modifier"] < 1.0 and result["max_duration_min"] is not None
+
+
+@pytest.mark.parametrize(("session_type", "minutes", "overrides", "lock"), _LATE_CEILINGS)
+def test_1166_control_each_later_ceiling_downgrades_the_session_to_easy(session_type, minutes, overrides, lock):
+    result = _late_ceiling_result(session_type, minutes, overrides)
+
+    assert result["session_type"] == "EASY"
+    assert lock in result["governance_locks_applied"]
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=_XA_T01)
+@pytest.mark.parametrize(("session_type", "minutes", "overrides", "lock"), _LATE_CEILINGS)
+def test_1166_a_session_a_later_ceiling_downgrades_does_not_keep_its_full_volume(
+    session_type, minutes, overrides, lock,
+):
+    """ADR-0065 left these ceilings out of the cap (Decision 4). How much they should take
+    off is the owner's decision; here only that some reduction is set, as for the
+    downgrades the cap covers."""
+    result = _late_ceiling_result(session_type, minutes, overrides)
+
+    cap = result.get("max_duration_min")
+    assert result["volume_modifier"] < 1.0 or (cap is not None and cap < minutes)
