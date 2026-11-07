@@ -89,6 +89,28 @@ def main_menu(titan_ctx: dict):
 # ══════════════════════════════════════════════════════════════════════════
 # 1. ΣΗΜΕΡΙΝΟ ΠΛΑΝΟ
 # ══════════════════════════════════════════════════════════════════════════
+def _stored_decision_of_today(db, day: str) -> tuple[str | None, str | None]:
+    """The owner's stored session of *day* and, when it could not be read, the error class.
+
+    ``(None, None)`` means there is no stored decision; ``(None, "<class>")`` means the
+    decision may exist but could not be read, so the screen must not say there is none.
+    The day is the UTC day, the morning's default key (``_routine_day``).
+    """
+    if db is None:
+        return None, None
+    try:
+        decision = db.get_governance_decision_on("owner", day)
+        if decision is None:
+            return None, None
+        session = decision["session_post_governance"]
+        if session is None or not str(session).strip():
+            # A stored row without a session is not a decision the screen can show.
+            raise ValueError("empty session")
+        return str(session).strip(), None
+    except Exception as exc:
+        return None, type(exc).__name__
+
+
 def menu_daily_plan(ctx: dict):
     _clear()
     _header("Σημερινό Πλάνο")
@@ -123,15 +145,31 @@ def menu_daily_plan(ctx: dict):
     else:
         print("\n  ⏰ (weather engine not ready)")
 
-    # Today's session
+    # Today's session. E2E-01 (#1246): the owner's stored decision of the day is
+    # the instruction; the weekly plan is only shown beside it, or labelled as
+    # not yet decided when the morning has not stored a decision.
+    now = datetime.now(UTC)
+    planned = None
     plan = ctx.get("last_weekly_plan")
     if plan:
-        today_name = datetime.now(UTC).strftime("%A")
-        for d in plan.get("daily_sessions", []):
-            if d["day"] == today_name:
-                print(f"\n  🏃 ΠΡΟΠΟΝΗΣΗ: {d['session_type']} – {d.get('distance_km',0)} km")
-                print(f"    {d.get('details','')}")
-                break
+        today_name = now.strftime("%A")
+        planned = next((d for d in plan.get("daily_sessions", []) if d["day"] == today_name), None)
+    session, read_error = _stored_decision_of_today(ctx.get("db"), now.date().isoformat())
+    if session is not None:
+        print(f"\n  🏃 ΠΡΟΠΟΝΗΣΗ: {session}")
+        if planned is not None:
+            # The stored decision has no distance, and governance may have cut the
+            # plan's volume, so the plan's distance is only shown as the plan's.
+            print(f"    (πλάνο εβδομάδας: {planned['session_type']} – {planned.get('distance_km', 0)} km)")
+    else:
+        if read_error is not None:
+            # The decision may exist (a REST, say): do not say there is none.
+            print(f"\n  ⚠️  Η απόφαση της ημέρας δεν διαβάστηκε ({read_error}). Μην ακολουθήσεις το πλάνο πριν τη δεις.")
+        else:
+            print("\n  🏃 Χωρίς αποθηκευμένη απόφαση για σήμερα.")
+        if planned is not None:
+            print(f"    Πλάνο εβδομάδας: {planned['session_type']} – {planned.get('distance_km', 0)} km")
+            print(f"    {planned.get('details', '')}")
 
     _divider()
     input("  [Enter] για επιστροφή ")

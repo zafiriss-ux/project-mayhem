@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## E2E-01 / #1246 — fix: the CLI "Σημερινό Πλάνο" shows the owner's stored decision of the day as the instruction (owner assignment, 2026-11-06)
+
+**Status:** OPEN — in review; merge waits for the owner's answer on the decision card of 2026-11-06 (fix now). #1246 closes with this PR. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — the final instruction the athlete sees. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A (category Α: the screen shows the governed decision instead of the ungoverned plan).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1246 only, in `titan/ui/menu_system.py` (`menu_daily_plan` and a new helper `_stored_decision_of_today`). The screen reads `get_governance_decision_on("owner", <UTC date>)` — a literal owner, the CLI being the owner's, and the same UTC day the morning stores under by default (`_routine_day`); a worker run claimed for another day stores under that day, so until today's morning runs the screen shows no instruction (the safe direction). (1) A stored decision is the instruction line (`ΠΡΟΠΟΝΗΣΗ: <session_post_governance>`); the weekly plan is shown beside it in brackets, as the plan's (the stored decision has no distance, and governance may cut the volume of the same session, so the plan's distance is never shown as the instruction's). (2) With no stored decision the plan is no longer shown as the instruction: the screen says there is no stored decision for today (also when there is no plan) and names the plan as the weekly plan. (3) When the decision cannot be read, the screen says so (the exception class only, never its text), does not claim there is no decision (it may exist, a REST say), tells the athlete not to follow the plan before seeing it, and does not show the plan as the instruction. Out of scope: the weather block's `today_session_type`, the Telegram `/today` path, and any other athlete (the CLI shows only the owner).
+Deliverable: the change; the strict xfail of #1517 passes with the mark removed; new tests (a stored EASY replaces the planned LONG_RUN; the plan's distance is only shown as the plan's; no stored decision is not shown as the instruction; another athlete's decision is not shown; a decision that cannot be read is not replaced by the plan and is not called missing; no decision and no plan still says there is no decision; a malformed stored row, or one whose session is empty, is treated as unreadable). Each new test fails on main except the other-athlete test, which pins the owner scoping. The no-decision control of #1517 changes on purpose (point 2).
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1246 closes after merge and green main.
+Canonical doc update: this brief, the reproduction brief's status line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3, row 15 is reproduction only); merge waits for the owner's answer on the decision card of 2026-11-06. No authorization, consent or governance code changes (display only), so contract §13 is not touched. Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `titan/ui/menu_system.py` (`menu_daily_plan` and its helper), `tests/test_menu_system.py`, the records above. No `daily_coach.py`, `titan/main.py`, `worker/__init__.py`, `telegram_bot.py`, schema, AGENTS.md or ADR change.
+
+---
+
 ## E2E-01 / #1246 — reproduction only: the CLI "Σημερινό Πλάνο" shows the plan's session, not the stored decision of the day (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1246 (stays open; this pass does not fix it). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — the final instruction the athlete sees. **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 15: reproduction, after rows 3–7, which are closed).
+**Status:** DONE 2026-11-06 — reproduction merged in PR #1517, squash `0a39b7f`; main green; #1246 stays open for the fix (E2E-01 fix brief above). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — the final instruction the athlete sees. **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 15: reproduction, after rows 3–7, which are closed).
 
 Pass type: reproduction
 Change Type: test-only
