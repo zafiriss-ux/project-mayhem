@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## XA-T01 / #1166 — reproduction only: a later ceiling turns LONG_RUN 180' into EASY 180' (owner assignment, 2026-11-07)
+
+**Status:** OPEN — in review. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance gate (`governance_engine.py`, architecture-locked, ADR-0009). **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 2: reproduction; the fix needs the owner's decision and an ADR, because ADR-0065 Decision 4 left these ceilings out of the cap).
+
+Pass type: reproduction
+Change Type: test-only
+Workflow Path: Path A
+Execution unit: XA-T01 at main `485fb85`, no application code. In `tests/test_science_edge_cases.py`, with a GREEN intensity gate as `IntensityGovernor` returns it (modifier 1.0): (1) control: without a ceiling LONG_RUN 180' and TEMPO 75' keep their type, modifier 1.0 and no duration cap (passes); (2) control: the same LONG_RUN on an H4 day gets the ADR-0065 reduction (passes); (3) control: each later ceiling turns the session into EASY and records its lock (passes); (4) the session such a ceiling downgrades does not keep its full volume — `xfail(strict=True, raises=AssertionError)`, four cases: PERSISTENCE_DEGRADED_CEILING and STARTUP_DATA_CONFIDENCE_CEILING (the audited scenario), and the PARASYMPATHETIC_GUARD and OVERRIDE_LOCKDOWN siblings found at the same place (the override lockdown disables only quality sessions, so it is shown on TEMPO 75'). The xfails pin only "some reduction" (a modifier below 1.0 or a duration cap below the planned minutes); how much is the owner's decision. Fix scope, not pinned here: these ceilings also leave a session that is already EASY at full volume (e.g. the H4 data-missing EASY day that then gets STARTUP_DATA_CONFIDENCE_CEILING), while ADR-0068 SG-09 caps every non-REST H4 day even when it stays EASY; the owner's question covers both. Tests count 5075 collected (11 added).
+Deliverable: the tests; an issue comment with the reproduction and the question for the owner.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: this pass does not close #1166; it closes with the fix PR and the Records Steward's disposition.
+Canonical doc update: this brief, the XA-T04 reproduction status line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-07 to implement plan v5.1-R3 (#1434 comment 6703643099, rank 2 = #1166, reproduction; the fix after the owner's decision). No application change, so contract §13 is not touched. Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `tests/test_science_edge_cases.py`, the records above. No `titan/`, `scripts/`, threshold, schema, AGENTS.md or ADR change.
+
+---
+
 ## XA-T04 / #1169 — reproduction only: an unknown or non-numeric ACWR reads as GREEN in the load gauge (owner assignment, 2026-11-07)
 
-**Status:** OPEN — in review. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (VLG feeds the priority lock's load band). **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 1: reproduction; the fix needs the owner's oracle for an unknown ACWR).
+**Status:** OPEN — merged in PR #1523, squash `485fb85`; main green; the fix waits for the owner's oracle for an unknown ACWR (decision card of 2026-11-07). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (VLG feeds the priority lock's load band). **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 1: reproduction; the fix needs the owner's oracle for an unknown ACWR).
 
 Pass type: reproduction
 Change Type: test-only
