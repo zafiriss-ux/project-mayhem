@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## BKP-NEW-05 / #1505 — reproduction only: the H1–H5 guard is checked by name only, and only by the drill (owner assignment, 2026-11-07)
+
+**Status:** OPEN — in review. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance / data recovery (ADR-0052 guard). **Severity:** HIGH (issue; governance path, floor HIGH). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 3: reproduction; the fix after the owner's go-ahead).
+
+Pass type: reproduction
+Change Type: test-only
+Workflow Path: Path A
+Execution unit: BKP-NEW-05 at main `c12ab64`, no application or script code. In `tests/test_backup_dr.py`, on synthetic backups made by the code in `tmp_path`: (1) control: the intact H1–H5 guard triggers refuse a hard-stop offset by INSERT and by UPDATE, and each weakened copy with the same name lets it in (a never-firing INSERT guard; an UPDATE guard without one key); (2) control: the drill passes all four weakened copies today (the two triggers, and `uq_governance_outcomes_athlete_date` and `idx_training_log_garmin_id` made non-unique with the same name); this parametrized control replaces the single #1496 pin `test_1496_names_only_a_weakened_guard_with_the_same_name_still_passes`; (3) the drill fails each weakened copy — `xfail(strict=True, raises=AssertionError)`, four cases; (4) control: `restore_backup.restore` puts back an intact backup; (5) `restore_backup.restore` refuses a backup without the INSERT guard trigger, or with the never-firing one of the same name, and nothing is put in place — `xfail(strict=True, raises=AssertionError)`: the restore runs no schema check, and opening the database does not make the trigger again (#1496 test). Tests count 5089 collected (15 added, 1 replaced). For the fix PR: the four controls of (2) and the xfails of (3) assert opposite results on the same copies on purpose, so the fix inverts or removes those controls; the xfails pin only that the drill fails and the restore refuses, so the intact-backup drill and restore tests must stay green. Views and the other indexes are also compared by name only: the fix compares the definition of every object the drill lists, not only the four pinned here. No real backup, restore or data is touched (the plan's restore hold is for real restores).
+Deliverable: the tests; an issue comment with the reproduction and the fix question for the owner.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: this pass does not close #1505; it closes with the fix PR and the Records Steward's disposition.
+Canonical doc update: this brief, the XA-T01 reproduction status line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-07 to implement plan v5.1-R3 (#1434 comment 6703643099, rank 3 = #1505, reproduction; the fix after the owner's go-ahead). No application change, so contract §13 is not touched. Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `tests/test_backup_dr.py`, the records above. No `titan/`, `scripts/`, runbook, threshold, schema, AGENTS.md or ADR change.
+
+---
+
 ## XA-T01 / #1166 — reproduction only: a later ceiling turns LONG_RUN 180' into EASY 180' (owner assignment, 2026-11-07)
 
-**Status:** OPEN — in review. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance gate (`governance_engine.py`, architecture-locked, ADR-0009). **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 2: reproduction; the fix needs the owner's decision and an ADR, because ADR-0065 Decision 4 left these ceilings out of the cap).
+**Status:** OPEN — merged in PR #1524, squash `c12ab64`; main green; the fix waits for the owner's decision on the volume reduction (decision card of 2026-11-07) and an ADR. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance gate (`governance_engine.py`, architecture-locked, ADR-0009). **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 2: reproduction; the fix needs the owner's decision and an ADR, because ADR-0065 Decision 4 left these ceilings out of the cap).
 
 Pass type: reproduction
 Change Type: test-only

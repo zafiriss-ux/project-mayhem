@@ -23,6 +23,7 @@ import pytest
 
 import titan.core.database as database_mod
 import titan.worker as worker_mod
+from titan.config.thresholds import HARD_STOP_THRESHOLD_KEYS
 from titan.core.database import SCHEMA_VERSION, DatabaseManager
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -551,16 +552,149 @@ def test_1496_an_extra_index_or_view_passes(db: DatabaseManager, tmp_path: Path)
     assert _load_restore_drill().run_drill(backup_dir)["ok"] is True
 
 
-def test_1496_names_only_a_weakened_guard_with_the_same_name_still_passes(
-    db: DatabaseManager, tmp_path: Path,
-) -> None:
-    # The known limit, pinned so it stays visible: #1505 checks what the guard does.
-    backup_dir, dest = _real_backup(db, tmp_path)
-    _edit(dest, "DROP TRIGGER trg_threshold_offsets_no_hard_stop_insert",
-          "CREATE TRIGGER trg_threshold_offsets_no_hard_stop_insert AFTER INSERT ON athlete_threshold_offsets "
-          "WHEN 0 BEGIN SELECT 1; END")
+# ── #1505 (BKP-NEW-05): an object with the right name but a weaker definition ──────
 
+_BKP_NEW_05 = "BKP-NEW-05 (#1505): the drill and the restore check guard objects by name only, and the restore not at all"
+
+_GUARD_KEYS = sorted(HARD_STOP_THRESHOLD_KEYS)
+
+
+def _guard_trigger(event: str, keys: list[str], when: str | None = None) -> str:
+    listed = ", ".join(f"'{key}'" for key in keys)
+    return (
+        f"CREATE TRIGGER trg_threshold_offsets_no_hard_stop_{event.lower()} BEFORE {event} ON athlete_threshold_offsets "
+        f"WHEN {when or f'NEW.threshold_key IN ({listed})'} "
+        "BEGIN SELECT RAISE(ABORT, 'hard-stop threshold keys H1-H5 cannot be adapted (ADR-0052)'); END"
+    )
+
+
+# Each case keeps the object's name and weakens what it does.
+_WEAKENED_GUARDS = [
+    pytest.param(
+        ("DROP TRIGGER trg_threshold_offsets_no_hard_stop_insert", _guard_trigger("INSERT", _GUARD_KEYS, when="0")),
+        id="insert-guard-never-fires",
+    ),
+    pytest.param(
+        ("DROP TRIGGER trg_threshold_offsets_no_hard_stop_update", _guard_trigger("UPDATE", _GUARD_KEYS[1:])),
+        id="update-guard-missing-a-key",
+    ),
+    pytest.param(
+        ("DROP INDEX uq_governance_outcomes_athlete_date",
+         "CREATE INDEX uq_governance_outcomes_athlete_date ON governance_outcomes (athlete_id, date)"),
+        id="outcomes-index-not-unique",
+    ),
+    pytest.param(
+        ("DROP INDEX idx_training_log_garmin_id",
+         "CREATE INDEX idx_training_log_garmin_id ON training_log (garmin_activity_id) WHERE garmin_activity_id IS NOT NULL"),
+        id="garmin-id-index-not-unique",
+    ),
+]
+
+
+def _hard_stop_write_is_refused(path: Path, event: str, key: str) -> bool:
+    """True when the database at *path* refuses to give *key* an offset by *event*; rolled back."""
+    conn = sqlite3.connect(str(path))
+    insert = (
+        "INSERT INTO athlete_threshold_offsets (athlete_id, threshold_key, delta_value, updated_at, source, confidence) "
+        "VALUES ('owner', ?, 1.0, '2026-11-07', 'manual', 0.5)"
+    )
+    try:
+        if event == "INSERT":
+            conn.execute(insert, (key,))
+        else:
+            conn.execute(insert, ("SYNTHETIC_ADAPTIVE_KEY",))
+            conn.execute(
+                "UPDATE athlete_threshold_offsets SET threshold_key = ? WHERE threshold_key = 'SYNTHETIC_ADAPTIVE_KEY'", (key,),
+            )
+    except sqlite3.IntegrityError as exc:
+        if "ADR-0052" not in str(exc):  # only the guard's own refusal counts
+            raise
+        return True
+    finally:
+        conn.rollback()
+        conn.close()
+    return False
+
+
+@pytest.mark.parametrize(
+    ("statements", "event"),
+    [
+        pytest.param((), "INSERT", id="intact-insert-guard-refuses"),
+        pytest.param((), "UPDATE", id="intact-update-guard-refuses"),
+        pytest.param(_WEAKENED_GUARDS[0].values[0], "INSERT", id="insert-guard-never-fires-lets-it-in"),
+        pytest.param(_WEAKENED_GUARDS[1].values[0], "UPDATE", id="update-guard-missing-a-key-lets-it-in"),
+    ],
+)
+def test_1505_control_what_the_guard_trigger_does_in_the_backup(
+    db: DatabaseManager, tmp_path: Path, statements: tuple[str, ...], event: str,
+) -> None:
+    # _GUARD_KEYS[0] is the key the weakened update guard leaves out.
+    _backup_dir, dest = _real_backup(db, tmp_path)
+    if statements:
+        _edit(dest, *statements)
+
+    assert _hard_stop_write_is_refused(dest, event, _GUARD_KEYS[0]) is (not statements)
+
+
+@pytest.mark.parametrize("statements", _WEAKENED_GUARDS)
+def test_1505_control_a_weakened_guard_keeps_its_name(
+    db: DatabaseManager, tmp_path: Path, statements: tuple[str, ...],
+) -> None:
+    backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, *statements)
+
+    # The drill passes it today: names only (#1496).
     assert _load_restore_drill().run_drill(backup_dir)["ok"] is True
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=_BKP_NEW_05)
+@pytest.mark.parametrize("statements", _WEAKENED_GUARDS)
+def test_1505_the_drill_fails_a_guard_with_its_name_but_a_weaker_definition(
+    db: DatabaseManager, tmp_path: Path, statements: tuple[str, ...],
+) -> None:
+    backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, *statements)
+
+    assert _load_restore_drill().run_drill(backup_dir)["ok"] is False
+
+
+def _load_restore_backup():
+    spec = importlib.util.spec_from_file_location("restore_backup", _ROOT / "scripts" / "restore_backup.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_1505_control_the_restore_puts_back_an_intact_backup(db: DatabaseManager, tmp_path: Path) -> None:
+    _backup_dir, dest = _real_backup(db, tmp_path)
+    data = tmp_path / "restored"
+    data.mkdir()
+
+    assert _load_restore_backup().restore(dest, data)["ok"] is True
+
+
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason=_BKP_NEW_05)
+@pytest.mark.parametrize(
+    "statements",
+    [
+        pytest.param(("DROP TRIGGER trg_threshold_offsets_no_hard_stop_insert",), id="guard-trigger-missing"),
+        _WEAKENED_GUARDS[0],
+    ],
+)
+def test_1505_the_restore_refuses_a_backup_with_a_missing_or_weakened_guard(
+    db: DatabaseManager, tmp_path: Path, statements: tuple[str, ...],
+) -> None:
+    # restore_backup.py puts either backup in place; the drill fails only the first (#1496).
+    # Opening the database does not make the trigger again, so H1–H5 offsets could then be written.
+    _backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, *statements)
+    data = tmp_path / "restored"
+    data.mkdir()
+
+    result = _load_restore_backup().restore(dest, data)
+
+    assert result["ok"] is False, result
+    assert not (data / "titan_core.db").exists()
 
 
 def test_1496_a_trigger_named_like_sqlites_own_still_fails(db: DatabaseManager, tmp_path: Path) -> None:
