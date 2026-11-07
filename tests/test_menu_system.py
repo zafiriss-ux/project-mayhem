@@ -349,14 +349,13 @@ class TestMenuHelpers:
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# #1246 (E2E-01): reproduction only — the CLI shows the plan, not the stored day
+# #1246 (E2E-01): the today screen shows the stored decision of the day
 # ════════════════════════════════════════════════════════════════════════════
-# The decision and the plan are synthetic. The xfail fails for the bug and
-# turns into a plain test when the screen reads the stored decision.
+# The decisions and the plan are synthetic. Reproduced in #1517.
 
 
-def _today_screen(capsys, tmp_path, stored_session):
-    """Render "Σημερινό Πλάνο" for today with a LONG_RUN plan and, if given, a stored decision."""
+def _today_screen(capsys, tmp_path, stored_session, plan_session="LONG_RUN"):
+    """Render "Σημερινό Πλάνο" for today with a plan and, if given, a stored decision."""
     from datetime import UTC, datetime
 
     from titan.core.database import DatabaseManager
@@ -368,14 +367,14 @@ def _today_screen(capsys, tmp_path, stored_session):
         if stored_session is not None:
             db.save_governance_decision({
                 "athlete_profile_id": "owner", "date": now.date().isoformat(),
-                "session_planned": "LONG_RUN", "session_post_governance": stored_session,
+                "session_planned": plan_session, "session_post_governance": stored_session,
                 "locks_applied": [],
             })
         plan = {"daily_sessions": [{
-            "day": now.strftime("%A"), "session_type": "LONG_RUN",
+            "day": now.strftime("%A"), "session_type": plan_session,
             "distance_km": 5.1, "details": "template",
         }]}
-        with patch("builtins.input", return_value=""), patch("os.system"):
+        with patch("builtins.input", return_value=""):
             menu_daily_plan({"db": db, "last_weekly_plan": plan})
         stored = db.get_governance_decision_on("owner", now.date().isoformat())
     finally:
@@ -383,24 +382,125 @@ def _today_screen(capsys, tmp_path, stored_session):
     return capsys.readouterr().out, stored
 
 
+def _instruction(out):
+    return [line.strip() for line in out.splitlines() if "ΠΡΟΠΟΝΗΣΗ:" in line]
+
+
 def test_1246_control_the_stored_decision_of_today_is_rest(capsys, tmp_path):
     _, stored = _today_screen(capsys, tmp_path, "REST")
     assert stored["session_post_governance"] == "REST"
 
 
-def test_1246_control_without_a_stored_decision_the_screen_shows_the_plan(capsys, tmp_path):
-    out, stored = _today_screen(capsys, tmp_path, None)
-    assert stored is None
-    assert "ΠΡΟΠΟΝΗΣΗ: LONG_RUN" in out
-
-
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="E2E-01 (#1246): the CLI today screen shows the plan's LONG_RUN, not the stored REST",
-)
 def test_1246_the_today_screen_shows_the_stored_rest(capsys, tmp_path):
     out, _ = _today_screen(capsys, tmp_path, "REST")
     # The plan may still be named next to the decision; the instruction line may not be it.
     assert "ΠΡΟΠΟΝΗΣΗ: LONG_RUN" not in out
     assert "REST" in out
+    assert _instruction(out) == ["🏃 ΠΡΟΠΟΝΗΣΗ: REST"]
+    assert "πλάνο εβδομάδας: LONG_RUN – 5.1 km" in out
+
+
+def test_1246_a_stored_easy_replaces_the_planned_long_run(capsys, tmp_path):
+    out, _ = _today_screen(capsys, tmp_path, "EASY")
+    assert _instruction(out) == ["🏃 ΠΡΟΠΟΝΗΣΗ: EASY"]
+
+
+def test_1246_the_plans_distance_is_only_shown_as_the_plans(capsys, tmp_path):
+    """Governance may cut the volume of the same session, so 5.1 km stays the plan's."""
+    out, _ = _today_screen(capsys, tmp_path, "LONG_RUN")
+    assert _instruction(out) == ["🏃 ΠΡΟΠΟΝΗΣΗ: LONG_RUN"]
+    assert "(πλάνο εβδομάδας: LONG_RUN – 5.1 km)" in out
+
+
+def test_1246_without_a_stored_decision_the_plan_is_not_the_instruction(capsys, tmp_path):
+    out, stored = _today_screen(capsys, tmp_path, None)
+    assert stored is None
+    assert _instruction(out) == []
+    assert "Χωρίς αποθηκευμένη απόφαση για σήμερα" in out
+    assert "Πλάνο εβδομάδας: LONG_RUN – 5.1 km" in out
+
+
+def test_1246_another_athletes_decision_is_not_the_owners(capsys, tmp_path):
+    from datetime import UTC, datetime
+
+    from titan.core.database import DatabaseManager
+    from titan.ui.menu_system import menu_daily_plan
+
+    now = datetime.now(UTC)
+    db = DatabaseManager(db_dir=tmp_path)
+    try:
+        db.save_governance_decision({
+            "athlete_profile_id": "a1", "date": now.date().isoformat(),
+            "session_planned": "EASY", "session_post_governance": "TEMPO", "locks_applied": [],
+        })
+        with patch("builtins.input", return_value=""):
+            menu_daily_plan({"db": db, "last_weekly_plan": None})
+    finally:
+        db.close()
+    out = capsys.readouterr().out
+    assert "TEMPO" not in out
+
+
+def test_1246_a_decision_that_cannot_be_read_is_not_replaced_by_the_plan(capsys):
+    from datetime import UTC, datetime
+
+    from titan.ui.menu_system import menu_daily_plan
+
+    db = MagicMock()
+    db.get_governance_decision_on.side_effect = RuntimeError("database is locked")
+    plan = {"daily_sessions": [{"day": datetime.now(UTC).strftime("%A"), "session_type": "LONG_RUN",
+                                "distance_km": 5.1, "details": "template"}]}
+    with patch("builtins.input", return_value=""):
+        menu_daily_plan({"db": db, "last_weekly_plan": plan})
+    out = capsys.readouterr().out
+    assert "δεν διαβάστηκε (RuntimeError)" in out
+    assert _instruction(out) == []
+    assert "database is locked" not in out
+    # The decision may exist: the screen must not say there is none.
+    assert "Χωρίς αποθηκευμένη απόφαση" not in out
+
+
+def test_1246_no_decision_and_no_plan_still_says_there_is_no_decision(capsys, tmp_path):
+    from titan.core.database import DatabaseManager
+    from titan.ui.menu_system import menu_daily_plan
+
+    db = DatabaseManager(db_dir=tmp_path)
+    try:
+        with patch("builtins.input", return_value=""):
+            menu_daily_plan({"db": db, "last_weekly_plan": None})
+    finally:
+        db.close()
+    out = capsys.readouterr().out
+    assert "Χωρίς αποθηκευμένη απόφαση για σήμερα" in out
+    assert _instruction(out) == []
+
+
+def test_1246_a_malformed_stored_decision_is_treated_as_unreadable(capsys):
+    from datetime import UTC, datetime
+
+    from titan.ui.menu_system import menu_daily_plan
+
+    db = MagicMock()
+    db.get_governance_decision_on.return_value = {"date": datetime.now(UTC).date().isoformat()}
+    with patch("builtins.input", return_value=""):
+        menu_daily_plan({"db": db, "last_weekly_plan": None})
+    out = capsys.readouterr().out
+    assert "δεν διαβάστηκε (KeyError)" in out
+    assert _instruction(out) == []
+
+
+@pytest.mark.parametrize("session", [None, "", "   "])
+def test_1246_a_stored_decision_without_a_session_is_treated_as_unreadable(capsys, session):
+    from datetime import UTC, datetime
+
+    from titan.ui.menu_system import menu_daily_plan
+
+    db = MagicMock()
+    db.get_governance_decision_on.return_value = {
+        "date": datetime.now(UTC).date().isoformat(), "session_post_governance": session,
+    }
+    with patch("builtins.input", return_value=""):
+        menu_daily_plan({"db": db, "last_weekly_plan": None})
+    out = capsys.readouterr().out
+    assert "δεν διαβάστηκε (ValueError)" in out
+    assert _instruction(out) == []
