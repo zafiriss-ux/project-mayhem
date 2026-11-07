@@ -608,12 +608,33 @@ def _set_briefing_sending(
         )
 
 
-def _mark_briefing_sending(db: DatabaseManager, athlete_id: str, execution_date: str, attempt: int | None = None) -> None:
-    """Write "sending" before the briefing goes to Telegram (MA-F5, ADR-0069 §8).
+def _mark_briefing_sending(db: DatabaseManager, athlete_id: str, execution_date: str, attempt: int | None = None) -> bool:
+    """Write "sending" before the briefing goes to Telegram (MA-F5, ADR-0069 §8); False: do not send.
 
-    With ``attempt``, only while that attempt still owns the open day (#1248).
+    With ``attempt``, only while that attempt still owns the open day (#1248). The fenced
+    write is the barrier before the send (M0-01-R1, #1264): when the database refuses it
+    because a later attempt took the day over, this attempt sends nothing (False). Any
+    other failure to write the mark keeps MA-F5: the send goes ahead (True), and a crash
+    then resends.
     """
-    _set_briefing_sending(db, athlete_id, execution_date, _utc_now().isoformat(), attempt)
+    from titan.core.repositories.operations import RoutineAttemptSuperseded
+
+    try:
+        db.update_routine_resume(
+            athlete_id=athlete_id, execution_date=execution_date, routine_type=ROUTINE_MORNING,
+            fields={"sending": _utc_now().isoformat()}, attempt=attempt,
+        )
+    except RoutineAttemptSuperseded:
+        logging.getLogger("titan.worker.runner").warning(
+            "worker_routine_superseded",
+            extra={"athlete_id": athlete_id, "execution_date": execution_date, "attempt": attempt},
+        )
+        return False
+    except Exception as exc:  # the send goes ahead: a crash then resends, as before MA-F5
+        logging.getLogger("titan.worker.runner").exception(
+            "worker_routine_resume_unsaved", extra={"athlete_id": athlete_id, "error": str(exc)},
+        )
+    return True
 
 
 def _send_crash_reminder(db: DatabaseManager, athlete_id: str) -> bool:

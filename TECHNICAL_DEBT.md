@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## M0-01-R1 / #1264 — fix: a refused "sending" mark stops the briefing (owner assignment, 2026-11-07)
+
+**Status:** OPEN — in review. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 (`M0-01-R1`). **Severity:** MEDIUM (source; owner review towards HIGH pending, the implementer does not change it). **Change Type:** implementation. **Workflow Path:** A (the registry's category Β: a design decision, taken by the owner on the decision card of 2026-11-07, "yes, as in admission card 0a"; the change itself only tightens).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: M0-01-R1 only, the briefing's send step. (1) `update_routine_resume` raises `RoutineAttemptSuperseded` (a `LookupError` subclass, so earlier callers are unchanged) when the fence refuses the write; a missing row stays a plain `LookupError`. (2) `worker._mark_briefing_sending` returns False when the fenced "sending" mark is refused, and True when it is written or any other error occurs (MA-F5, ADR-0069 §8, kept by the owner's choice). (3) `DailyCoach`'s send step does not send when the "before" hook returns False: it sets `attempt_lost`, logs `briefing_not_sent` (`attempt_superseded_at_mark`) and returns False; a hook that fails or returns anything else still sends (MA-F5). After a mark is written, a later attempt sees "sending" and sends only the MA-F5 reminder, never a second briefing. Out of scope: the stored-decision resends (`_send_stored_decision` from `_resume_stored_day`), which have no mark — #1521 (M0-01-R2, owner decision, it changes MA-F5 for resends); and the residual when the mark fails for another reason (such as "database is locked") during a takeover, which keeps sending by the owner's choice; a missing routine row at the mark also keeps sending, as on main (noted in #1521).
+Deliverable: the change; the strict xfail of #1520 passes with the mark removed; new tests (the owner attempt marks before it sends; the refusal is told apart from a missing row; `_mark_briefing_sending` stops the send only when superseded; `DailyCoach` sends unless the mark is refused: refused, no answer, hook failed). Four tests fail on main: the refused case of the `DailyCoach` test, the told-apart test, the `_mark_briefing_sending` test and the former xfail test; the owner-attempt control and the two MA-F5 cases (no answer, hook failed) are guards that pass on main.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: the PR refers to #1264 and does not close it. M0-01-R1 and #1264 close only after merge, green main and the Records Steward's disposition (plan v5.1-R3, S4).
+Canonical doc update: this brief, the reproduction brief's status line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl. The canonical M0-01-R1 row is left to the Records Steward (S4).
+Authorizes: Owner instruction 2026-11-07 to implement plan v5.1-R3 (#1434 comment 6703643099, rank 0a) and the owner's choice "Ναι, όπως στη κάρτα 0a" on the decision card of 2026-11-07 (fix in a second PR; other database errors keep sending). Category Α in effect (tightening only, contract §13 not weakened: every new path sends less, none more). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `titan/core/repositories/operations.py`, `titan/worker/__init__.py`, `titan/orchestration/daily_coach.py`, `tests/test_worker_morning_retry.py`, the records above. No schema, new module, AGENTS.md or ADR change.
+
+---
+
 ## M0-01-R1 / #1264 — reproduction only: a takeover after the send check still sends the old briefing (owner assignment, 2026-11-07)
 
-**Status:** OPEN — in review. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 (`M0-01-R1`, canonical row below). **Severity:** MEDIUM (source; the admission card asks the owner to review it towards HIGH, the implementer does not change it). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 0a: admission card on #1264, then reproduction).
+**Status:** DONE 2026-11-07 — reproduction merged in PR #1520, squash `ffc24be`; main green; #1264 stays open for the fix (M0-01-R1 fix brief above). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 (`M0-01-R1`, canonical row below). **Severity:** MEDIUM (source; the admission card asks the owner to review it towards HIGH, the implementer does not change it). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 0a: admission card on #1264, then reproduction).
 
 Pass type: reproduction
 Change Type: test-only
