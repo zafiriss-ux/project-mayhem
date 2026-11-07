@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## XA-T01 / #1166 — policy-only: ADR-0084, the later ceilings get the ADR-0065 volume cap (owner assignment, 2026-11-07)
+
+**Status:** OPEN — ADR-0084 Accepted by the owner (2026-11-07, 13:18:47 UTC, final text at 781ef64, CI 15/15); merge of PR #1526 authorized by the owner; the code follows in a separate PR with M01-M20 and an explicit RECOVERY_EASY test. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance gate (`governance_engine.py`, ADR-0009). **Severity:** HIGH (issue). **Change Type:** policy-only. **Workflow Path:** A (plan v5.1-R3, rank 2; Category Β: the ADR is Accepted before the code, ADR-0072).
+
+Pass type: policy-only
+Change Type: policy-only
+Workflow Path: Path A
+Execution unit: ADR-0084 only. It records the owner's choice "70%, έως 60΄, όπως ADR-0065": when the parasympathetic guard, override lockdown, startup data confidence or persistence-degraded ceiling changes the session type (not to REST), the session keeps 0.7 (or a smaller valid modifier it already has) and at most 60 minutes (whole minutes: max(1, min(floor(valid existing), 60)); invalid values give 0.7 and 60; a modifier that does not convert to a number stays on the fail-closed path, as today). A session already in EASY_SESSIONS (EASY, RECOVERY, RECOVERY_EASY) or REST gets no extra cap from these ceilings; any reduction it already has (e.g. 0.8 YELLOW, 0.7/60' H4) stays. The DOWNGRADE_VOLUME event records the values actually kept. Out of scope: the fail-closed exception path (#1527), the morning message that shows only km (#1207, XB-18), sub-0.1 km rounding in daily_coach (pre-existing), and the Proposed status lines of ADR-0065/ADR-0068 in the index (F-17, for a separate records pass). Evidence, kept apart: the question and the reproduction are public in the #1166 comment 6705138702, which does not hold the answer; the owner's answer is the decision card in the private project thread, 2026-11-07 09:48:37 UTC, with no public link. The owner's audits on PR #1526 (comment 6706024062, F-01 to F-09; comment 6706784214, F-10 to F-13; comment 6706868197, F-14 to F-17; comment 6706947467, F-18 to F-21) were applied before the approval card. The independent code and security reviews are comments on PR #1526 written by AI reviewers, not GitHub reviews and not the owner's approval. Records: the ADR index (README, CLAUDE.md), D-224, this brief, the BKP-NEW-05 reproduction status line, the ledger.
+Deliverable: the ADR text, reviewed, and the owner's approval of it on a decision card; then one implementation PR with the tests the ADR names.
+Stop condition: Any failed gate or blocking review stops commit/push/merge. No merge before the owner approves the ADR text.
+Closure rule: this pass does not close #1166; it closes with the implementation PR and the Records Steward's disposition.
+Canonical doc update: docs/adr/0084-late-ceiling-volume-cap.md, docs/adr/README.md, CLAUDE.md ADR list, DECISIONS.md D-224, this brief, docs/governance/ledger.jsonl.
+Authorizes: the policy-only files below and nothing else; no code. Sources, kept apart: (a) execution instruction: the owner's message in the private project thread, 2026-11-07 07:03:38 UTC, to implement plan v5.1-R3. The plan itself (#1434 comment 6703643099) is marked PROPOSED / PLAN ONLY: it gives the order (rank 2 = #1166), not authority. (b) Policy choice: the owner's decision card, 2026-11-07 09:48:37 UTC (private, see above). (c) ADR approval: the owner's message in the private project thread, 2026-11-07 13:18:47 UTC, approving the final text (781ef64) as Accepted, including the gentle-type exemption and the 1-minute floor, and authorizing the merge of PR #1526 (ADR-0078); CI PASS and the independent reviews are not that approval. The decision only tightens, so contract §13 is not touched.
+Allowed / Forbidden: the files above. No `titan/`, `scripts/`, test, threshold, schema or AGENTS.md change; ADR-0065 is not edited.
+
+---
+
 ## BKP-NEW-05 / #1505 — reproduction only: the H1–H5 guard is checked by name only, and only by the drill (owner assignment, 2026-11-07)
 
-**Status:** OPEN — in review. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance / data recovery (ADR-0052 guard). **Severity:** HIGH (issue; governance path, floor HIGH). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 3: reproduction; the fix after the owner's go-ahead).
+**Status:** OPEN — merged in PR #1525, squash `cdc90e8`; main green; the fix waits for the owner's go-ahead (decision card of 2026-11-07). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance / data recovery (ADR-0052 guard). **Severity:** HIGH (issue; governance path, floor HIGH). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 3: reproduction; the fix after the owner's go-ahead).
 
 Pass type: reproduction
 Change Type: test-only

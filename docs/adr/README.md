@@ -103,6 +103,7 @@
 | [0080](0080-h4-after-failed-sync.md) | Η H4 δεν λέει CLEAR όταν οι προπονήσεις της μέρας δεν μπήκαν στη βάση: timeout, αποτυχία σύνδεσης, αποτυχία εγγραφής (SD-05) | Safety (Κατηγορία Β) | ✅ Accepted (2026-11-01) · Implemented (#1160) |
 | [0081](0081-unmeasured-gates-in-message.md) | Το πρωινό μήνυμα λέει ποιες πύλες δεν μετρήθηκαν και όταν πιάσει lock, χωρίς ωμούς κωδικούς (SD-06) | Safety (Κατηγορία Β) | ✅ Accepted (2026-11-01) · Implemented (#1164) |
 | [0083](0083-owner-garmin-profile-id.md) | Ο λογαριασμός Garmin αναγνωρίζεται και από το σταθερό `profileId`, όχι μόνο από το `displayName` (M0-13-R2) | Security (Κατηγορία Β) | ✅ Accepted (2026-11-06) |
+| [0084](0084-late-ceiling-volume-cap.md) | Τα αργότερα ταβάνια (parasympathetic guard, override lockdown, startup data confidence, persistence degraded) παίρνουν κι αυτά 70% και το πολύ 60' (XA-T01) | Governance (ADR-0009, Κατηγορία Β) | ✅ Accepted (2026-11-07) |
 
 ---
 
