@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## XA-T04 / #1169 — reproduction only: an unknown or non-numeric ACWR reads as GREEN in the load gauge (owner assignment, 2026-11-07)
+
+**Status:** OPEN — in review. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (VLG feeds the priority lock's load band). **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 1: reproduction; the fix needs the owner's oracle for an unknown ACWR).
+
+Pass type: reproduction
+Change Type: test-only
+Workflow Path: Path A
+Execution unit: XA-T04 at the current main, no application code. In `tests/titan/science/test_volume_load_gauge.py`: (1) control: an infinite ACWR is RED (passes); (2) NaN and a non-number ACWR are not GREEN, as a non-finite TSB or glycogen debt already is — `xfail(strict=True, raises=AssertionError)`: `resolve` turns a non-number into 1.0 and NaN passes every comparison; (3) an unknown ACWR (None, what the morning passes when the load history is too short) is not reported as an in-range GREEN — strict xfail; which colour it takes is the owner's decision; (4) control: DailyCoach step 9a (`_step_load_priority`, real VLG and priority lock) with measured inputs gives GREEN / OPTIMAL (passes); (5) the same step with ACWR and TSB unknown is not GREEN / OPTIMAL — strict xfail: the unknown TSB becomes 0.0 (`_safe_float`) and the unknown ACWR 1.0. The governance gates already treat an unknown ACWR conservatively (H2 stress context `UNKNOWN_ACWR`, VO2 eligibility V1); this reproduction covers the load gauge and the priority lock's load band only. Consequence on main: unknown ACWR and TSB read as OPTIMAL, which in BUILD selects the default `acwr_ceiling` and `tsb_floor` instead of the stricter BUILD_OVERLOAD set and ranks CS_CONFIDENCE_LOCK ahead of OVERRIDE_LOCKDOWN. The xfails pin only "not GREEN" / "not OPTIMAL" (any non-GREEN colour, not a specific YELLOW or RED); the fix must return a colour, not raise, for a non-number. The fix scope also names the sibling GREEN defaults the owner sees when choosing the oracle: `getattr(vlg_state, 'color', 'GREEN')` and `trace.get("vlg_color", "GREEN")` in `daily_coach.py`, and the missing-colour default in `_vlg_to_load_band`; the stored `vlg_color` reaches the operator console and the outcome tracker.
+Deliverable: the tests; an issue comment with the reproduction and the oracle question for the owner.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: this pass does not close #1169; it closes with the fix PR and the Records Steward's disposition.
+Canonical doc update: this brief, the M0-01-R1 fix status line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-07 to implement plan v5.1-R3 (#1434 comment 6703643099, rank 1 = #1169, reproduction; the fix after the owner's oracle). No application change, so contract §13 is not touched. Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `tests/titan/science/test_volume_load_gauge.py`, the records above. No `titan/`, `scripts/`, threshold, schema, AGENTS.md or ADR change.
+
+---
+
 ## M0-01-R1 / #1264 — fix: a refused "sending" mark stops the briefing (owner assignment, 2026-11-07)
 
-**Status:** OPEN — in review. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 (`M0-01-R1`). **Severity:** MEDIUM (source; owner review towards HIGH pending, the implementer does not change it). **Change Type:** implementation. **Workflow Path:** A (the registry's category Β: a design decision, taken by the owner on the decision card of 2026-11-07, "yes, as in admission card 0a"; the change itself only tightens).
+**Status:** OPEN — merged in PR #1522, squash `b7258d4`; main green; the canonical M0-01-R1 row and #1264 await the Records Steward's disposition (S4). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 (`M0-01-R1`). **Severity:** MEDIUM (source; owner review towards HIGH pending, the implementer does not change it). **Change Type:** implementation. **Workflow Path:** A (the registry's category Β: a design decision, taken by the owner on the decision card of 2026-11-07, "yes, as in admission card 0a"; the change itself only tightens).
 
 Pass type: implementation
 Change Type: implementation
