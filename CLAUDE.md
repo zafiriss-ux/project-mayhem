@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 5063 tests all green (5063 passed, 2 skipped, 10 xfailed for open bugs #1348, #1169 and #1166, 5075 collected — 2026-11-07, full pytest)
+**Historical snapshot:** 5071 tests all green (5071 passed, 2 skipped, 16 xfailed for open bugs #1348, #1169, #1166 and #1505, 5089 collected — 2026-11-07, full pytest)
 
 Update after every commit adding/removing tests:
 
