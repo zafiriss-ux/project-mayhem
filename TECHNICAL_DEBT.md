@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## M0-01-R1 / #1264 — reproduction only: a takeover after the send check still sends the old briefing (owner assignment, 2026-11-07)
+
+**Status:** OPEN — in review. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 (`M0-01-R1`, canonical row below). **Severity:** MEDIUM (source; the admission card asks the owner to review it towards HIGH, the implementer does not change it). **Change Type:** test-only. **Workflow Path:** A (plan v5.1-R3, rank 0a: admission card on #1264, then reproduction).
+
+Pass type: reproduction
+Change Type: test-only
+Workflow Path: Path A
+Execution unit: M0-01-R1 at the current main, no application code. In `tests/test_worker_morning_retry.py`, with a real `DatabaseManager`, the real worker binding (`_bind_day`) and the real `DailyCoach` record and send handlers: attempt 1 records TEMPO while it owns the day; attempt 2, in another connection and once, takes the day over right after attempt 1's ownership check in the send step passes, stores REST and marks the day delivered in the database (it sends nothing in the test). (1) Control: a takeover before the send check sends nothing (passes). (2) Control: the database refuses attempt 1's fenced "sending" mark after the takeover (`LookupError`, no mark; passes). (3) Attempt 1 does not send TEMPO after REST — `xfail(strict=True, raises=AssertionError)`: `_set_briefing_sending` and `_briefing_hook` swallow the refusal, so the send goes ahead. The fix (the refused fenced mark stops the send; other database errors keep the MA-F5 behaviour) is a separate PR: the owner answered "yes, as in admission card 0a" on the decision card of 2026-11-07. The stored-decision resend path (`_send_stored_decision`) has no fenced mark either; the fix PR states it as in or out of its scope.
+Deliverable: the three tests; the admission card on #1264 (comment of 2026-11-07).
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: this pass does not close #1264 or M0-01-R1; they close with the fix PR and the Records Steward's disposition.
+Canonical doc update: this brief, the E2E-01 fix closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-07 to implement plan v5.1-R3 (#1434 comment 6703643099, rank 0a = #1264 record/design, then a reproduction PR). No application change, so contract §13 is not touched. Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `tests/test_worker_morning_retry.py`, the records above. No `titan/`, `scripts/`, schema, AGENTS.md or ADR change.
+
+---
+
 ## E2E-01 / #1246 — fix: the CLI "Σημερινό Πλάνο" shows the owner's stored decision of the day as the instruction (owner assignment, 2026-11-06)
 
-**Status:** OPEN — in review; merge waits for the owner's answer on the decision card of 2026-11-06 (fix now). #1246 closes with this PR. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — the final instruction the athlete sees. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A (category Α: the screen shows the governed decision instead of the ungoverned plan).
+**Status:** RESOLVED 2026-11-07 — the owner answered "yes, fix it" on the decision card; PR #1518, squash `f622206`; main green; #1246 closed (the optimal-time block carried in #1519). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — the final instruction the athlete sees. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A (category Α: the screen shows the governed decision instead of the ungoverned plan).
 
 Pass type: implementation
 Change Type: implementation

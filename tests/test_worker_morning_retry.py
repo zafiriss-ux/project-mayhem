@@ -604,6 +604,63 @@ def test_1248_a_superseded_attempt_does_not_touch_the_newer_attempts_sending_mar
     assert "sending" not in resume and resume["session"] == {"session_type": "REST"}
 
 
+# ── M0-01-R1 (#1264): the check and the send are not one step ────────────────
+
+def _takeover_after_the_send_check(db: DatabaseManager):
+    """Attempt 1 records TEMPO while it owns the day; attempt 2 takes over right after
+    attempt 1's ownership check in the send step passes, stores REST and marks the day
+    delivered in the database (it sends nothing here). The takeover runs once, so a
+    later check by attempt 1 sees the real state."""
+    coach = _stale_coach(db, lambda: None)
+    coach._make_record_outcome_handler()(None, _result("TEMPO"))
+    real_check, takeover = coach.attempt_is_current, _newer_attempt_delivers_rest(_data_dir())
+    taken: list[bool] = []
+
+    def _check() -> bool:
+        owns = real_check()
+        if not taken:
+            takeover()
+            taken.append(True)
+        return owns
+
+    coach.attempt_is_current = _check
+    return coach
+
+
+def test_1264_control_a_takeover_before_the_send_check_sends_nothing(db) -> None:
+    coach = _stale_coach(db, lambda: None)
+    coach._make_record_outcome_handler()(None, _result("TEMPO"))
+    _newer_attempt_delivers_rest(_data_dir())()
+
+    assert coach._make_send_telegram_handler()(None, _result("TEMPO")) is False
+    assert _to_athlete() == []
+
+
+def test_1264_control_the_database_refuses_the_superseded_attempts_sending_mark(db) -> None:
+    coach = _takeover_after_the_send_check(db)
+    assert coach.attempt_is_current() is True  # the check passes, then attempt 2 takes over
+    assert coach.attempt_is_current() is False  # the takeover runs once: the real state
+
+    with pytest.raises(LookupError):
+        db.update_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                                 fields={"sending": "x"}, attempt=1)
+    assert "sending" not in db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning")
+
+
+@pytest.mark.xfail(
+    strict=True, raises=AssertionError,
+    reason="M0-01-R1 (#1264): the refused fenced 'sending' mark is swallowed and the briefing is still sent",
+)
+def test_1264_a_takeover_after_the_send_check_does_not_send_the_old_briefing(db) -> None:
+    coach = _takeover_after_the_send_check(db)
+
+    sent = coach._make_send_telegram_handler()(None, _result("TEMPO"))
+
+    assert _stored(db) == ["REST"]  # attempt 2's REST is the day's decision, marked delivered
+    assert _to_athlete() == []  # attempt 1 must not send TEMPO after it
+    assert sent is False
+
+
 def test_1248_a_failed_fenced_write_leaves_no_transaction_open(db) -> None:
     db.begin_routine_attempt(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
                              started_at=_MORNING, max_attempts=3)
