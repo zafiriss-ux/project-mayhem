@@ -10,7 +10,7 @@ issue/PR that references the tier and item number below.
 
 ## XA-T01 / #1166 — policy-only: ADR-0084, the later ceilings get the ADR-0065 volume cap (owner assignment, 2026-11-07)
 
-**Status:** OPEN — in review; ADR-0084 is Proposed until the owner approves its text. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance gate (`governance_engine.py`, ADR-0009). **Severity:** HIGH (issue). **Change Type:** policy-only. **Workflow Path:** A (plan v5.1-R3, rank 2; Category Β: the ADR is Accepted before the code, ADR-0072).
+**Status:** OPEN — ADR-0084 Accepted by the owner (2026-11-07, 13:18:47 UTC, final text at 781ef64, CI 15/15); merge of PR #1526 authorized by the owner; the code follows in a separate PR with M01-M20 and an explicit RECOVERY_EASY test. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance gate (`governance_engine.py`, ADR-0009). **Severity:** HIGH (issue). **Change Type:** policy-only. **Workflow Path:** A (plan v5.1-R3, rank 2; Category Β: the ADR is Accepted before the code, ADR-0072).
 
 Pass type: policy-only
 Change Type: policy-only
@@ -20,7 +20,7 @@ Deliverable: the ADR text, reviewed, and the owner's approval of it on a decisio
 Stop condition: Any failed gate or blocking review stops commit/push/merge. No merge before the owner approves the ADR text.
 Closure rule: this pass does not close #1166; it closes with the implementation PR and the Records Steward's disposition.
 Canonical doc update: docs/adr/0084-late-ceiling-volume-cap.md, docs/adr/README.md, CLAUDE.md ADR list, DECISIONS.md D-224, this brief, docs/governance/ledger.jsonl.
-Authorizes: the policy-only files below and nothing else; no code. Sources, kept apart: (a) execution instruction: the owner's message in the private project thread, 2026-11-07 07:03:38 UTC, to implement plan v5.1-R3. The plan itself (#1434 comment 6703643099) is marked PROPOSED / PLAN ONLY: it gives the order (rank 2 = #1166), not authority. (b) Policy choice: the owner's decision card, 2026-11-07 09:48:37 UTC (private, see above). (c) ADR approval: pending. ADR-0084 becomes Accepted only when the owner approves its exact text on a new decision card (ADR-0078); CI PASS and the independent reviews are not that approval. The decision only tightens, so contract §13 is not touched.
+Authorizes: the policy-only files below and nothing else; no code. Sources, kept apart: (a) execution instruction: the owner's message in the private project thread, 2026-11-07 07:03:38 UTC, to implement plan v5.1-R3. The plan itself (#1434 comment 6703643099) is marked PROPOSED / PLAN ONLY: it gives the order (rank 2 = #1166), not authority. (b) Policy choice: the owner's decision card, 2026-11-07 09:48:37 UTC (private, see above). (c) ADR approval: the owner's message in the private project thread, 2026-11-07 13:18:47 UTC, approving the final text (781ef64) as Accepted, including the gentle-type exemption and the 1-minute floor, and authorizing the merge of PR #1526 (ADR-0078); CI PASS and the independent reviews are not that approval. The decision only tightens, so contract §13 is not touched.
 Allowed / Forbidden: the files above. No `titan/`, `scripts/`, test, threshold, schema or AGENTS.md change; ADR-0065 is not edited.
 
 ---
